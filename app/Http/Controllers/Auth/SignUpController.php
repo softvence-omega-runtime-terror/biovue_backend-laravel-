@@ -27,12 +27,15 @@ class SignUpController extends Controller
                 Password::min(8)->letters()->mixedCase()->numbers()->symbols()
             ],
             'role' => 'required|string',
+             'terms_accepted' => 'required|accepted',
         ], [
             'email.required' => 'Email field is required.',
             'email.email' => 'Please enter a valid email address.',
             'password.required' => 'Password is required.',
             'password.confirmed' => 'Password confirmation does not match.',
             'role.required' => 'Role is required.',
+            'terms_accepted.required' => 'You must accept the terms and conditions.',
+            'terms_accepted.accepted' => 'You must accept the terms and conditions.',
         ]);
 
         // Check if email already exists
@@ -55,6 +58,7 @@ class SignUpController extends Controller
         $user = User::create([
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'terms_accepted' => true,
         ]);
 
         // Assign role

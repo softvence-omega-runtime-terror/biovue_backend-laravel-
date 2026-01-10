@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('otp',5)->nullable();
             $table->timestamp('otp_expire_at')->nullable();
             $table->boolean('status')->default(true);
+            $table->boolean('terms_accepted')->default(false);
             $table->rememberToken();
             $table->timestamps();
         });

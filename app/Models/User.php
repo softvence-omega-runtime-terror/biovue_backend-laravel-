@@ -24,6 +24,7 @@ class User extends Authenticatable
         'password',
         'otp',
         'otp_expire_at',
+        'terms_accepted',
         'status',
     ];
 
