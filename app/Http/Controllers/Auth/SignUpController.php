@@ -64,7 +64,7 @@ class SignUpController extends Controller
         // Assign role
         $user->assignRole($request->role);
 
-       // Generate OTP (6-digit)
+       // Generate OTP (5-digit)
         $otp = random_int(10000, 99999);
 
         $user->update([
