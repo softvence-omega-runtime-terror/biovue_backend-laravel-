@@ -6,6 +6,9 @@ use App\Http\Controllers\Auth\SignUpController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\TermsAndConditionController;
+use App\Http\Controllers\Auth\FirebaseAuthController;
+use App\Http\Controllers\Subscription\IndividualPlanController;
+use App\Http\Controllers\Subscription\ProfessionalPlanController;
 
 Route::prefix('v1')->group(function () {
 
@@ -22,6 +25,8 @@ Route::prefix('v1')->group(function () {
     Route::post('reset-password', [ForgotPasswordController::class, 'resetPassword']);   // Reset password
 
 
+//Firebase using google login
+Route::post('firebase-login', [FirebaseAuthController::class, 'loginWithFirebase']);
 
 
      // Public Route: Get Terms & Conditions
@@ -33,13 +38,19 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         
 
-
+//subscription DETAILS
        
+Route::prefix('subscription')->group(function () {
+    Route::resource('individual-plans', IndividualPlanController::class);
+    Route::resource('professional-plans', ProfessionalPlanController::class);
+});
+
+
 
     // Admin Route: Create/Update Terms & Conditions
     Route::post('terms', [TermsAndConditionController::class, 'save']);
        
         Route::post('logout', [LoginController::class, 'logout']);          // Logout
-        // অন্যান্য protected routes এখানে add করতে পারো
+      
     });
 });

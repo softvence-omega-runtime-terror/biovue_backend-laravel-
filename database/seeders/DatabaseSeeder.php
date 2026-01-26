@@ -20,6 +20,10 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RolesTableSeeder::class,
             TermsAndConditionSeeder::class,
+
+            // Add your plan seeders here
+            IndividualPlansSeeder::class,
+            ProfessionalPlansSeeder::class,
         ]);
 
         // Create test user
