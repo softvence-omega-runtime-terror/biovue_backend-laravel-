@@ -55,4 +55,17 @@ class User extends Authenticatable
             'status' => 'boolean',
         ];
     }
+
+
+
+    public function individualPlans()
+    {
+        return $this->hasMany(IndividualPlan::class);
+    }
+
+    public function professionalPlans()
+    {
+        return $this->hasMany(ProfessionalPlan::class);
+    }
+
 }

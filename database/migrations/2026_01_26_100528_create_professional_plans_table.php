@@ -11,6 +11,7 @@ class CreateProfessionalPlansTable extends Migration
         Schema::create('professional_plans', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->enum('billing_cycle', ['days', 'monthly', 'annual', 'custom']);
             $table->decimal('price', 10, 2)->nullable();
             $table->integer('duration')->nullable(); // trial days

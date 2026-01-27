@@ -12,6 +12,7 @@ class IndividualPlan extends Model
 
     protected $fillable = [
         'name',
+        'user_id',
         'billing_cycle',
         'duration',
         'price',
@@ -23,4 +24,10 @@ class IndividualPlan extends Model
         'features' => 'array',
         'status' => 'boolean',
     ];
+
+    // Relationship with User
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

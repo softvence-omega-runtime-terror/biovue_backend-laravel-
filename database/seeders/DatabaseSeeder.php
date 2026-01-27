@@ -3,39 +3,20 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // Call other seeders first
+        // Roles
         $this->call([
             RolesTableSeeder::class,
             TermsAndConditionSeeder::class,
-
-            // Add your plan seeders here
-            IndividualPlansSeeder::class,
-            ProfessionalPlansSeeder::class,
         ]);
 
-        // Create test user
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-            'password' => Hash::make('Password123!'),
-            'email_verified_at' => now(),
-            'status' => true,
-        ]);
-
-        // Create Admin user
+        // Create users
         $admin = User::updateOrCreate(
             ['email' => 'admin@example.com'],
             [
@@ -45,9 +26,8 @@ class DatabaseSeeder extends Seeder
                 'status' => true,
             ]
         );
-        $admin->assignRole('Admin');
+        $admin->assignRole('admin');
 
-        // Create Professional user
         $professional = User::updateOrCreate(
             ['email' => 'pro@example.com'],
             [
@@ -57,9 +37,8 @@ class DatabaseSeeder extends Seeder
                 'status' => true,
             ]
         );
-        $professional->assignRole('Professional');
+        $professional->assignRole('professional');
 
-        // Create Individual user
         $individual = User::updateOrCreate(
             ['email' => 'individual@example.com'],
             [
@@ -69,6 +48,12 @@ class DatabaseSeeder extends Seeder
                 'status' => true,
             ]
         );
-        $individual->assignRole('Individual');
+        $individual->assignRole('individual');
+
+        // Now seed plans using user IDs
+        $this->call([
+            IndividualPlansSeeder::class,
+            ProfessionalPlansSeeder::class,
+        ]);
     }
 }

@@ -4,14 +4,24 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\ProfessionalPlan;
+use App\Models\User;
 
 class ProfessionalPlansSeeder extends Seeder
 {
     public function run()
     {
+        $admin = User::where('email', 'admin@example.com')->first();
+
+        if (!$admin) {
+            return;
+        }
+
+        $userId = $admin->id;
+
         $plans = [
             [
                 'name' => 'Tier 1 Professional',
+                'user_id' => $userId,
                 'billing_cycle' => 'monthly',
                 'price' => 250,
                 'status' => true,
@@ -30,6 +40,7 @@ class ProfessionalPlansSeeder extends Seeder
             ],
             [
                 'name' => 'Tier 2 Professional',
+                'user_id' => $userId,
                 'billing_cycle' => 'monthly',
                 'price' => 750,
                 'status' => true,
@@ -48,6 +59,7 @@ class ProfessionalPlansSeeder extends Seeder
             ],
             [
                 'name' => 'Tier 3 Professional',
+                'user_id' => $userId,
                 'billing_cycle' => 'monthly',
                 'price' => 3500,
                 'status' => true,
@@ -65,6 +77,7 @@ class ProfessionalPlansSeeder extends Seeder
             ],
             [
                 'name' => 'Enterprise',
+                'user_id' => $userId,
                 'billing_cycle' => 'custom',
                 'price' => null,
                 'status' => true,
