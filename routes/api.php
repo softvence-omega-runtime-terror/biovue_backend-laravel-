@@ -1,4 +1,8 @@
 <?php
+
+use App\Http\Controllers\ActivityLog\ActivityController;
+use App\Http\Controllers\AdjustProgram\AdjustProgramController;
+use App\Http\Controllers\Ads\AdsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\SignUpController;
@@ -6,8 +10,15 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\TermsAndConditionController;
 use App\Http\Controllers\Auth\FirebaseAuthController;
+use App\Http\Controllers\HydrationLog\HydrationController;
+use App\Http\Controllers\NutritionLog\NutritionController;
+use App\Http\Controllers\ProgramsSet\ProgramsSetController;
+use App\Http\Controllers\SleepLog\SleepController;
+use App\Http\Controllers\StressLog\StressController;
 use App\Http\Controllers\Subscription\IndividualPlanController;
 use App\Http\Controllers\Subscription\ProfessionalPlanController;
+use App\Http\Controllers\TargetGoal\TargetGoalController;
+use App\Http\Controllers\User\UserProfileController;
 
 Route::prefix('v1')->group(function () {
 
@@ -38,6 +49,8 @@ Route::prefix('v1')->group(function () {
     // ----------------------------
     Route::middleware('auth:sanctum')->group(function () {
 
+        Route::get('profile', [UserProfileController::class, 'index']);
+        Route::post('profile', [UserProfileController::class, 'storeAndUpdate']);
         // Protected - create/delete
         Route::post('individual-plans', [IndividualPlanController::class, 'store']);
         Route::delete('individual-plans/{id}', [IndividualPlanController::class, 'destroy']);
@@ -49,5 +62,34 @@ Route::prefix('v1')->group(function () {
         Route::post('terms', [TermsAndConditionController::class, 'save']);
 
         Route::post('logout', [LoginController::class, 'logout']);
+
+
+        Route::post('/activity', [ActivityController::class, 'store']);
+        Route::get('/activity/{user_id}', [ActivityController::class, 'index']);
+
+        Route::post('/hydration', [HydrationController::class, 'store']);
+        Route::get('/hydration/{user_id}', [HydrationController::class, 'index']);
+
+        Route::post('/sleep', [SleepController::class, 'store']);
+        Route::get('/sleep/{user_id}', [SleepController::class, 'index']);
+
+        Route::post('/stress', [StressController::class, 'store']);
+        Route::get('/stress/{user_id}', [StressController::class, 'index']);
+
+        Route::post('/nutrition', [NutritionController::class, 'store']);
+        Route::get('/nutrition/{user_id}', [NutritionController::class, 'index']);
+
+        Route::post('/goals', [TargetGoalController::class, 'store']);
+        Route::get('/goals/{user_id}', [TargetGoalController::class, 'show']);
+
+        Route::post('/adjust-program', [AdjustProgramController::class, 'store']);
+        Route::get('/adjust-program/{user_id}', [AdjustProgramController::class, 'show']);
+
+        Route::post('/ads', [AdsController::class, 'store']);
+        Route::get('/ads', [AdsController::class, 'index']);
+
+        Route::post('/programs-set', [ProgramsSetController::class, 'store']);
+        Route::get('/programs-set', [ProgramsSetController::class, 'index']);
+
     });
 });
