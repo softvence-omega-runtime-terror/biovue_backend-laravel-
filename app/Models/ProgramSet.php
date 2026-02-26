@@ -41,4 +41,11 @@ class ProgramSet extends Model
         'supplement' => 'array',
         'weekly_targets' => 'array',
     ];
+
+
+   // ProgramSet.php
+public function users()
+{
+    return $this->belongsToMany(User::class, 'connect_to_professions');
+}
 }

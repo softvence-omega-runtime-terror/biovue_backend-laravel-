@@ -108,4 +108,10 @@ class User extends Authenticatable
         return $this->hasOne(AdjustProgram::class); 
     }
     
+
+
+    public function programSets()
+{
+    return $this->belongsToMany(ProgramSet::class, 'connect_to_professions');
+}
 }

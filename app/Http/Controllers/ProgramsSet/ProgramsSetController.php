@@ -153,5 +153,38 @@ class ProgramsSetController extends Controller
         }
     }
 
+
+
+
+public function assignUsers(Request $request)
+{
+    $request->validate([
+        'program_set_id' => 'required|integer|exists:programs_sets,id',
+        'user_ids' => 'required|array',
+        'user_ids.*' => 'integer|exists:users,id',
+    ]);
+
+    try {
+        $programSet = ProgramSet::findOrFail($request->program_set_id);
+
+        $programSet->users()->sync($request->user_ids);
+
+        $users = $programSet->users()
+            ->select('users.id', 'users.name', 'users.email')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Users assigned successfully.',
+            'data' => $users
+        ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to assign users. Error: '.$e->getMessage()
+        ], 500);
+    }
+}
    
 }
