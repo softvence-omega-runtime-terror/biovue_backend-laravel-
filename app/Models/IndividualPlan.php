@@ -30,4 +30,10 @@ class IndividualPlan extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+
+    public function payments()
+{
+    return $this->hasMany(PlanPayment::class, 'individual_plan_id');
+}
 }

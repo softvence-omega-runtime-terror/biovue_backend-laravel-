@@ -111,7 +111,13 @@ class User extends Authenticatable
 
 
     public function programSets()
-{
-    return $this->belongsToMany(ProgramSet::class, 'connect_to_professions');
-}
+    {
+        return $this->belongsToMany(ProgramSet::class, 'connect_to_professions');
+    }
+
+
+    public function planPayments()
+    {
+        return $this->hasMany(PlanPayment::class);
+    }
 }
