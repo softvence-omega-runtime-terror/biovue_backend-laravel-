@@ -107,5 +107,12 @@ class User extends Authenticatable
     { 
         return $this->hasOne(AdjustProgram::class); 
     }
+
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute()
+    {
+        return $this->image ? asset('storage/' . $this->image) : null;
+    }
     
 }

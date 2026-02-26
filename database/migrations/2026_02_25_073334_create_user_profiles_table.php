@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('body_fat', 20)->nullable(); 
             $table->string('location')->nullable(); 
             $table->boolean('agreed_terms')->default(false); 
+            $table->string('image')->nullable();
 
             // Health Metrics 
             $table->boolean('smoking_status')->nullable(); 
