@@ -12,12 +12,14 @@ class ProgramSet extends Model
 
     protected $table = 'programs_sets';
 
-    // Mass assignable fields
-    protected $fillable = [
+        protected $fillable = [
         'name',
         'duration',
         'primary_goal',
         'target_intensity',
+        'description',
+        'notes',
+        'weekly_targets',
         'habit_focus_areas',
         'program_focus',
         'focus_areas',
@@ -30,7 +32,6 @@ class ProgramSet extends Model
         'supplement',
     ];
 
-    // Cast JSON columns to array automatically
     protected $casts = [
         'habit_focus_areas' => 'array',
         'program_focus' => 'array',
@@ -38,5 +39,6 @@ class ProgramSet extends Model
         'habit_focus' => 'array',
         'supplement_recommendation' => 'array',
         'supplement' => 'array',
+        'weekly_targets' => 'array',
     ];
 }

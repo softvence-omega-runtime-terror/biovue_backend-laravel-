@@ -48,6 +48,9 @@ class ProgramsSetController extends Controller
             'fat' => 'nullable|integer',
             'supplement_recommendation' => 'nullable|array',
             'supplement' => 'nullable|array',
+            'description' => 'nullable|string',
+            'notes' => 'nullable|string',
+            'weekly_targets' => 'nullable|array',
         ]);
 
         try {
@@ -87,43 +90,47 @@ class ProgramsSetController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update only description, notes and weekly_targets.
      */
     public function update(Request $request, $id)
-    {
-        $request->validate([
-            'name' => 'nullable|string|max:255',
-            'duration' => 'nullable|integer',
-            'primary_goal' => 'nullable|string|max:255',
-            'target_intensity' => 'nullable|in:Light,Moderate,High',
-            'habit_focus_areas' => 'nullable|array',
-            'program_focus' => 'nullable|array',
-            'focus_areas' => 'nullable|array',
-            'habit_focus' => 'nullable|array',
-            'calories' => 'nullable|integer',
-            'protein' => 'nullable|integer',
-            'carbs' => 'nullable|integer',
-            'fat' => 'nullable|integer',
-            'supplement_recommendation' => 'nullable|array',
-            'supplement' => 'nullable|array',
-        ]);
+        {
+            $request->validate([
+                'name' => 'nullable|string|max:255',
+                'duration' => 'nullable|integer',
+                'primary_goal' => 'nullable|string|max:255',
+                'target_intensity' => 'nullable|in:Light,Moderate,High',
+                'habit_focus_areas' => 'nullable|array',
+                'program_focus' => 'nullable|array',
+                'focus_areas' => 'nullable|array',
+                'habit_focus' => 'nullable|array',
+                'calories' => 'nullable|integer',
+                'protein' => 'nullable|integer',
+                'carbs' => 'nullable|integer',
+                'fat' => 'nullable|integer',
+                'supplement_recommendation' => 'nullable|array',
+                'supplement' => 'nullable|array',
+                'description' => 'nullable|string',
+                'notes' => 'nullable|string',
+                'weekly_targets' => 'nullable|array',
+            ]);
 
-        try {
-            $programSet = ProgramSet::findOrFail($id);
-            $programSet->update($request->all());
+            try {
+                $programSet = ProgramSet::findOrFail($id);
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Program Set updated successfully.',
-                'data' => $programSet
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Failed to update Program Set. Error: '.$e->getMessage()
-            ], 500);
+                $programSet->update($request->all());
+
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Program Set updated successfully.',
+                    'data' => $programSet
+                ], 200);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to update Program Set. Error: '.$e->getMessage()
+                ], 500);
+            }
         }
-    }
 
     /**
      * Remove the specified resource from storage (soft delete).
@@ -146,5 +153,5 @@ class ProgramsSetController extends Controller
         }
     }
 
-    
+   
 }

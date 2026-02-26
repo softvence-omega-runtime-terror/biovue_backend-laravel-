@@ -18,7 +18,10 @@ return new class extends Migration
                 $table->string('primary_goal')->nullable();
 
                 $table->enum('target_intensity', ['Light', 'Moderate', 'High'])->nullable();
+                $table->text('description')->nullable();
 
+                $table->text('notes')->nullable();
+                $table->json('weekly_targets')->nullable();
                 $table->json('habit_focus_areas')->nullable(); 
                 $table->json('program_focus')->nullable(); 
                 $table->json('focus_areas')->nullable();
