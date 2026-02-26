@@ -20,6 +20,7 @@ use App\Http\Controllers\Subscription\ProfessionalPlanController;
 use App\Http\Controllers\TargetGoal\TargetGoalController;
 use App\Http\Controllers\User\UserProfileController;
 
+
 Route::prefix('v1')->group(function () {
 
     // ----------------------------
@@ -104,8 +105,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/ads', [AdsController::class, 'store']);
         Route::get('/ads', [AdsController::class, 'index']);
 
-        Route::post('/programs-set', [ProgramsSetController::class, 'store']);
-        Route::get('/programs-set', [ProgramsSetController::class, 'index']);
+       Route::resource('program-sets', ProgramsSetController::class);
 
     });
 });

@@ -13,10 +13,10 @@ class CreatePlanPaymentsTable extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade'); // who made the payment
 
 
-               $table->foreignId('plan_id')
-                  ->nullable()
-                  ->constrained('subscription_plans')
-                  ->onDelete('cascade');
+            //   $table->foreignId('plan_id')
+            //     ->nullable()
+            //     ->constrained('subscription_plans')
+            //     ->onDelete('cascade');
                   
             // Plan type: 'individual' or 'professional'
             $table->enum('plan_type', ['individual', 'professional']); 
