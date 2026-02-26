@@ -68,4 +68,44 @@ class User extends Authenticatable
         return $this->hasMany(ProfessionalPlan::class);
     }
 
+    public function profile() 
+    { 
+        return $this->hasOne(UserProfile::class); 
+    } 
+    
+    public function activityLogs() 
+    { 
+        return $this->hasMany(ActivityLog::class); 
+    } 
+
+    public function hydrationLogs() 
+    { 
+        return $this->hasMany(HydrationLog::class); 
+    } 
+
+    public function sleepLogs() 
+    { 
+        return $this->hasMany(SleepLog::class); 
+    } 
+
+    public function stressLogs() 
+    { 
+        return $this->hasMany(StressLog::class); 
+    } 
+
+    public function nutritionLogs() 
+    { 
+        return $this->hasMany(NutritionLog::class);
+    } 
+
+    public function targetGoals()
+    { 
+        return $this->hasOne(TargetGoal::class);
+    } 
+
+    public function adjustProgram()
+    { 
+        return $this->hasOne(AdjustProgram::class); 
+    }
+    
 }
