@@ -115,4 +115,16 @@ class User extends Authenticatable
         return $this->image ? asset('storage/' . $this->image) : null;
     }
     
+
+
+    public function programSets()
+    {
+        return $this->belongsToMany(ProgramSet::class, 'connect_to_professions');
+    }
+
+
+    public function planPayments()
+    {
+        return $this->hasMany(PlanPayment::class);
+    }
 }

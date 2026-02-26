@@ -19,6 +19,8 @@ use App\Http\Controllers\Subscription\IndividualPlanController;
 use App\Http\Controllers\Subscription\ProfessionalPlanController;
 use App\Http\Controllers\TargetGoal\TargetGoalController;
 use App\Http\Controllers\User\UserProfileController;
+use App\Http\Controllers\User\UserController;
+
 
 Route::prefix('v1')->group(function () {
 
@@ -114,8 +116,12 @@ Route::prefix('v1')->group(function () {
         Route::post('/ads', [AdsController::class, 'store']);
         Route::get('/ads', [AdsController::class, 'index']);
 
-        Route::post('/programs-set', [ProgramsSetController::class, 'store']);
-        Route::get('/programs-set', [ProgramsSetController::class, 'index']);
+
+//trainer dashbaord 
+       Route::resource('program-sets', ProgramsSetController::class);
+       
+        Route::get('users/individuals', [UserController::class, 'individualUsers']);
+        Route::post('program-sets/assign-users', [ProgramsSetController::class, 'assignUsers']);
 
     });
 });
