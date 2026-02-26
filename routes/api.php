@@ -82,26 +82,36 @@ Route::prefix('v1')->group(function () {
         Route::post('logout', [LoginController::class, 'logout']);
 
 
-        Route::post('/activity', [ActivityController::class, 'store']);
-        Route::get('/activity/{user_id}', [ActivityController::class, 'index']);
+        Route::get('/activity-logs', [ActivityController::class, 'index']);
+        Route::post('/activity-logs', [ActivityController::class, 'store']); 
+        Route::get('/activity-logs/{id}', [ActivityController::class, 'show']); 
+        Route::delete('/activity-logs/{id}', [ActivityController::class, 'destroy']); 
+        Route::get('/activity-report', [ActivityController::class, 'getActivityReport']);
 
-        Route::post('/hydration', [HydrationController::class, 'store']);
-        Route::get('/hydration/{user_id}', [HydrationController::class, 'index']);
+        Route::get('/hydration-logs', [HydrationController::class, 'index']);
+        Route::post('/hydration-logs', [HydrationController::class, 'store']);
+        Route::get('/hydration-logs/{id}', [HydrationController::class, 'show']);
+        Route::delete('/hydration-logs/{id}', [HydrationController::class, 'destroy']);
 
-        Route::post('/sleep', [SleepController::class, 'store']);
-        Route::get('/sleep/{user_id}', [SleepController::class, 'index']);
+        Route::post('/sleep-logs', [SleepController::class, 'store']);
+        Route::get('/sleep-logs', [SleepController::class, 'index']);
+    
+        Route::get('/sleep-logs/{id}', [SleepController::class, 'show']);
+        Route::get('getSleepReport',[SleepController::class, 'getSleepReport']);
 
-        Route::post('/stress', [StressController::class, 'store']);
-        Route::get('/stress/{user_id}', [StressController::class, 'index']);
+        Route::apiResource('stress-logs', StressController::class);
 
-        Route::post('/nutrition', [NutritionController::class, 'store']);
-        Route::get('/nutrition/{user_id}', [NutritionController::class, 'index']);
+        Route::get('/nutrition-logs', [NutritionController::class, 'index']);
+        Route::post('/nutrition-logs', [NutritionController::class, 'store']);
+        Route::get('/nutrition-logs/{id}', [NutritionController::class, 'show']);
+        Route::delete('/nutrition-logs/{id}', [NutritionController::class, 'destroy']);
+        Route::get('/nutrition-report', [NutritionController::class, 'getNutritionReport']);
 
         Route::post('/goals', [TargetGoalController::class, 'store']);
-        Route::get('/goals/{user_id}', [TargetGoalController::class, 'show']);
+        Route::get('/goals/{id}', [TargetGoalController::class, 'show']);
 
         Route::post('/adjust-program', [AdjustProgramController::class, 'store']);
-        Route::get('/adjust-program/{user_id}', [AdjustProgramController::class, 'show']);
+        Route::get('/adjust-program/{id}', [AdjustProgramController::class, 'show']);
 
         Route::post('/ads', [AdsController::class, 'store']);
         Route::get('/ads', [AdsController::class, 'index']);
