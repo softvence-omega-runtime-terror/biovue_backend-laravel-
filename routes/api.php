@@ -33,6 +33,13 @@ Route::prefix('v1')->group(function () {
     // Public Route: Get Terms & Conditions
     Route::get('terms', [TermsAndConditionController::class, 'get']);
 
+    // Stripe Webhook
+    Route::post('payment/webhook', [PaymentController::class, 'handleWebhook']);
+     Route::get('/payment/success', [PaymentController::class, 'paymentSuccess'])->name('payment.success');
+    Route::get('/payment/cancel', [PaymentController::class, 'paymentCancel'])->name('payment.cancel');
+
+
+
     // ----------------------------
     // Protected Routes (Require Auth)
     // ----------------------------
@@ -44,6 +51,15 @@ Route::prefix('v1')->group(function () {
 
         Route::post('professional-plans', [ProfessionalPlanController::class, 'store']);
         Route::delete('professional-plans/{id}', [ProfessionalPlanController::class, 'destroy']);
+
+        //Payment for individual user & professional user
+
+           //subscription payment
+        Route::post('/payment/process', [PaymentController::class, 'processPayment']);
+        Route::get('/all-payments', [PaymentController::class, 'index'])->name('payment.index');//admin show all
+        Route::get('/payment/show', [PaymentController::class, 'show']);
+
+
 
         // Admin Route: Create/Update Terms & Conditions
         Route::post('terms', [TermsAndConditionController::class, 'save']);
