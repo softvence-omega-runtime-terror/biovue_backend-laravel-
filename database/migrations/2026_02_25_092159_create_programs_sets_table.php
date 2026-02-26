@@ -12,20 +12,32 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('programs_sets', function (Blueprint $table) {
-            $table->id();
-            $table->string('name')->nullable(); 
-            $table->string('duration')->nullable();
-            $table->string('primary_goal')->nullable(); 
-            $table->string('target_intensity')->nullable(); 
-            $table->json('habit_focus_areas')->nullable(); 
-            $table->json('program_focus')->nullable(); 
-            $table->integer('calories')->nullable(); 
-            $table->integer('protein')->nullable(); 
-            $table->integer('carbs')->nullable(); 
-            $table->integer('fat')->nullable(); 
-            $table->json('supplement_recommendation')->nullable(); 
-            $table->timestamps();
-        });
+                $table->id();
+                $table->string('name')->nullable(); 
+                $table->integer('duration')->nullable();
+                $table->string('primary_goal')->nullable();
+
+                $table->enum('target_intensity', ['Light', 'Moderate', 'High'])->nullable();
+                $table->text('description')->nullable();
+
+                $table->text('notes')->nullable();
+                $table->json('weekly_targets')->nullable();
+                $table->json('habit_focus_areas')->nullable(); 
+                $table->json('program_focus')->nullable(); 
+                $table->json('focus_areas')->nullable();
+                $table->json('habit_focus')->nullable();
+
+                $table->unsignedInteger('calories')->nullable(); 
+                $table->unsignedInteger('protein')->nullable(); 
+                $table->unsignedInteger('carbs')->nullable(); 
+                $table->unsignedInteger('fat')->nullable(); 
+
+                $table->json('supplement_recommendation')->nullable(); 
+                $table->json('supplement')->nullable();
+                $table->softDeletes();
+
+                $table->timestamps();
+            });
     }
 
     /**
