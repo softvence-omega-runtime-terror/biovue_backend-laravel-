@@ -27,6 +27,11 @@ class CreatePlanPaymentsTable extends Migration
                 ->constrained('professional_plans')
                 ->nullOnDelete();
 
+            $table->foreignId('plan_id')
+                ->nullable()
+                ->constrained('plans')
+                ->nullOnDelete();
+
             // Payment info
             $table->string('payment_method')->default('stripe');
             $table->string('transaction_id')->nullable()->unique(); // nullable for pending payments
