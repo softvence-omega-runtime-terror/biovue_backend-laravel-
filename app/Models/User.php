@@ -125,6 +125,8 @@ class User extends Authenticatable
 
     public function planPayments()
     {
-        return $this->hasMany(PlanPayment::class);
+        return $this->hasMany(PlanPayment::class, 'user_id');
     }
+
+
 }

@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\ActivityLog\ActivityController;
 use App\Http\Controllers\AdjustProgram\AdjustProgramController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\UserListController;
 use App\Http\Controllers\Ads\AdsController;
 use App\Http\Controllers\Schedule\ScheduleController;
 use Illuminate\Http\Request;
@@ -12,11 +15,14 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\TermsAndConditionController;
 use App\Http\Controllers\Auth\FirebaseAuthController;
 use App\Http\Controllers\HydrationLog\HydrationController;
+use App\Http\Controllers\HydrationLog\HydrationReportController;
 use App\Http\Controllers\NutritionLog\NutritionController;
 use App\Http\Controllers\ProgramsSet\ProgramsSetController;
 use App\Http\Controllers\SleepLog\SleepController;
 use App\Http\Controllers\StressLog\StressController;
+use App\Http\Controllers\StressLog\StressReportController;
 use App\Http\Controllers\Subscription\IndividualPlanController;
+use App\Http\Controllers\Subscription\PlanController;
 use App\Http\Controllers\Subscription\ProfessionalPlanController;
 use App\Http\Controllers\TargetGoal\TargetGoalController;
 use App\Http\Controllers\User\UserProfileController;
@@ -61,6 +67,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('profile', [UserProfileController::class, 'index']);
         Route::post('profile', [UserProfileController::class, 'storeAndUpdate']);
+        Route::get('user-reports', [UserController::class, 'getUserReport']);
         // Protected - create/delete
         Route::post('individual-plans', [IndividualPlanController::class, 'store']);
         Route::delete('individual-plans/{id}', [IndividualPlanController::class, 'destroy']);
@@ -93,14 +100,16 @@ Route::prefix('v1')->group(function () {
         Route::post('/hydration-logs', [HydrationController::class, 'store']);
         Route::get('/hydration-logs/{id}', [HydrationController::class, 'show']);
         Route::delete('/hydration-logs/{id}', [HydrationController::class, 'destroy']);
+        Route::get('/hydration-report', [HydrationReportController::class, 'getHydrationReport']);
 
         Route::post('/sleep-logs', [SleepController::class, 'store']);
         Route::get('/sleep-logs', [SleepController::class, 'index']);
     
         Route::get('/sleep-logs/{id}', [SleepController::class, 'show']);
-        Route::get('getSleepReport',[SleepController::class, 'getSleepReport']);
+        Route::get('/sleep-report', [SleepController::class, 'getSleepReport']);
 
         Route::apiResource('stress-logs', StressController::class);
+        Route::get('/stress-report', [StressReportController::class, 'getStressReport']);
 
         Route::get('/nutrition-logs', [NutritionController::class, 'index']);
         Route::post('/nutrition-logs', [NutritionController::class, 'store']);
@@ -121,6 +130,19 @@ Route::prefix('v1')->group(function () {
 
         Route::post('ads', [AdsController::class, 'storeOrUpdate']);
         Route::delete('ads/{id}', [AdsController::class, 'destroy']);
+        Route::get('ads/admin', [AdsController::class, 'adminIndex']);
+        Route::post('ads/toggle-status/{id}', [AdsController::class, 'toggleStatus']);
+
+        Route::get('/admin/overview', [DashboardController::class, 'getAdminStats']);
+        Route::get('/admin/reports', [ReportController::class, 'getReports']);
+
+        Route::get('/admin/users', [UserListController::class, 'getUser']);
+        Route::get('/admin/users/{id}', [UserListController::class, 'getUserById']);
+        Route::delete('/admin/users/{id}', [UserListController::class, 'destroy']);
+
+        Route::apiResource('plans', PlanController::class);
+        Route::post('plans/toggle-status/{id}', [PlanController::class, 'toggleStatus']);
+        Route::get('/plans/{type}', [PlanController::class, 'getPlansByType']);
 
 
 //trainer dashbaord 
