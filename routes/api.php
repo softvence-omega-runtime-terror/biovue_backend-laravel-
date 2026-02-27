@@ -3,6 +3,7 @@
 use App\Http\Controllers\ActivityLog\ActivityController;
 use App\Http\Controllers\AdjustProgram\AdjustProgramController;
 use App\Http\Controllers\Ads\AdsController;
+use App\Http\Controllers\Schedule\ScheduleController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\SignUpController;
@@ -51,7 +52,7 @@ Route::prefix('v1')->group(function () {
      Route::get('/payment/success', [PaymentController::class, 'paymentSuccess'])->name('payment.success');
     Route::get('/payment/cancel', [PaymentController::class, 'paymentCancel'])->name('payment.cancel');
 
-
+    Route::get('ads', [AdsController::class, 'index']);
 
     // ----------------------------
     // Protected Routes (Require Auth)
@@ -107,14 +108,19 @@ Route::prefix('v1')->group(function () {
         Route::delete('/nutrition-logs/{id}', [NutritionController::class, 'destroy']);
         Route::get('/nutrition-report', [NutritionController::class, 'getNutritionReport']);
 
+        Route::get('/calendar-schedules', [ScheduleController::class, 'index']);
+        Route::post('/schedule-checkin', [ScheduleController::class, 'storeSchedule']);
+        Route::post('/send-reminder', [ScheduleController::class, 'sendReminder']);
+        Route::get('/my-reminders', [ScheduleController::class, 'getMyReminders']);
+
         Route::post('/goals', [TargetGoalController::class, 'store']);
         Route::get('/goals/{id}', [TargetGoalController::class, 'show']);
 
         Route::post('/adjust-program', [AdjustProgramController::class, 'store']);
         Route::get('/adjust-program/{id}', [AdjustProgramController::class, 'show']);
 
-        Route::post('/ads', [AdsController::class, 'store']);
-        Route::get('/ads', [AdsController::class, 'index']);
+        Route::post('ads', [AdsController::class, 'storeOrUpdate']);
+        Route::delete('ads/{id}', [AdsController::class, 'destroy']);
 
 
 //trainer dashbaord 

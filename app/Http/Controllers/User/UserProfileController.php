@@ -45,27 +45,31 @@ class UserProfileController extends Controller
             'notes' => 'nullable|string|max:255',
         ]);
 
-        if ($request->hasFile('image')) {
+        if ($request->hasFile('image')) 
+        {
+            $oldProfile = UserProfile::where('user_id', $validated['user_id'])->first();
 
-        $oldProfile = UserProfile::where('user_id', $validated['user_id'])->first();
-
-        if ($oldProfile && $oldProfile->image) {
-            \Storage::disk('public')->delete($oldProfile->image);
+            if ($oldProfile && $oldProfile->image) {
+                \Storage::disk('public')->delete($oldProfile->image);
             }
 
             $path = $request->file('image')->store('profiles', 'public');
             $validated['image'] = $path; 
         }
-            $profile = UserProfile::updateOrCreate(
+
+        $profile = UserProfile::updateOrCreate(
             ['user_id' => $validated['user_id']], 
             $validated 
         );
-        $profile->image_url = $profile->image ? asset('storage/' . $profile->image) : null;
+
+        if ($profile->image) {
+            $profile->image = asset('storage/' . $profile->image);
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Profile updated successfully',
-            'data' => $profile
+            'data' => $profile 
         ]);
     }
     
