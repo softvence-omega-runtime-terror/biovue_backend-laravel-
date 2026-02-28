@@ -29,6 +29,8 @@ class User extends Authenticatable
         'terms_accepted',
         'status',
         'plan_id',
+        'user_type',
+        'profession_type'
     ];
 
     /**

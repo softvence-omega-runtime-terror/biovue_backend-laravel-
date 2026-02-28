@@ -28,9 +28,11 @@ class SignUpController extends Controller
                 Password::min(8)->letters()->mixedCase()->numbers()->symbols()
             ],
             'role' => 'required|string',
-             'terms_accepted' => 'required|accepted',
+            'terms_accepted' => 'required|accepted',
+            'user_type' => 'required|string|in:individual,professional',
+            'profession_type' => 'nullable|string|in:trainer_coach,nutritionist,supplement_supplier',
         ], [
-             'name.required' => 'Name field is required.',
+            'name.required' => 'Name field is required.',
             'email.required' => 'Email field is required.',
             'email.email' => 'Please enter a valid email address.',
             'password.required' => 'Password is required.',
@@ -58,10 +60,12 @@ class SignUpController extends Controller
 
         // Create user
         $user = User::create([
-             'name' => $request->name,
+            'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'terms_accepted' => true,
+            'user_type' => $request->user_type,
+            'profession_type' => $request->profession_type ?? null,
         ]);
 
         // Assign role
@@ -86,6 +90,8 @@ class SignUpController extends Controller
                 'email' => $user->email,
                 'name' => $user->name,
                 'role' => $request->role,
+                'user_type' => $user->user_type,
+                'profession_type' => $user->profession_type,
             ]
         ], 201);
 
