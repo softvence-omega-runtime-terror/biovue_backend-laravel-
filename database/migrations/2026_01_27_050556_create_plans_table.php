@@ -22,6 +22,7 @@ return new class extends Migration
             $table->integer('member_limit')->nullable(); 
             $table->json('features')->nullable();
             $table->boolean('status')->default(true);
+            $table->softDeletes();
             $table->timestamps();
         });
     }

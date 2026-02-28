@@ -42,7 +42,7 @@ class PlanController extends Controller
         $plan = Plan::create([
             'name' => $request->name,
             'plan_type' => $request->plan_type,
-            'user_id' => $request->user()->id, // ক্রিয়েটর অ্যাডমিন আইডি
+            'user_id' => $request->user()->id, 
             'billing_cycle' => $request->billing_cycle,
             'price' => $request->price,
             'duration' => $request->duration,

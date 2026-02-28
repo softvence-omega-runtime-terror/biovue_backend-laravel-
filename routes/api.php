@@ -22,12 +22,11 @@ use App\Http\Controllers\ProgramsSet\ProgramsSetController;
 use App\Http\Controllers\SleepLog\SleepController;
 use App\Http\Controllers\StressLog\StressController;
 use App\Http\Controllers\StressLog\StressReportController;
-use App\Http\Controllers\Subscription\IndividualPlanController;
 use App\Http\Controllers\Subscription\PlanController;
-use App\Http\Controllers\Subscription\ProfessionalPlanController;
 use App\Http\Controllers\TargetGoal\TargetGoalController;
 use App\Http\Controllers\User\UserProfileController;
 use App\Http\Controllers\User\UserController;
+use App\Http\Controllers\Payment\PlanPaymentController;
 
 
 Route::prefix('v1')->group(function () {
@@ -48,17 +47,21 @@ Route::prefix('v1')->group(function () {
     Route::post('firebase-login', [FirebaseAuthController::class, 'loginWithFirebase']);
 
     // Public - Everyone can view plans
-    Route::resource('individual-plans', IndividualPlanController::class)->only(['index']);
-    Route::resource('professional-plans', ProfessionalPlanController::class)->only(['index']);
+     // List all plans
+            Route::get('plans', [PlanController::class, 'index'])->name('plans.index');
+
+            // Show single plan
+            Route::get('plans/{id}', [PlanController::class, 'show'])->name('plans.show');
+
 
     // Public Route: Get Terms & Conditions
     Route::get('terms', [TermsAndConditionController::class, 'get']);
 
+ 
     // Stripe Webhook
-    Route::post('payment/webhook', [PaymentController::class, 'handleWebhook']);
-     Route::get('/payment/success', [PaymentController::class, 'paymentSuccess'])->name('payment.success');
-    Route::get('/payment/cancel', [PaymentController::class, 'paymentCancel'])->name('payment.cancel');
-
+        Route::post('payment/webhook', [PlanPaymentController::class, 'handleWebhook']);
+        Route::get('/payment/success', [PlanPaymentController::class, 'paymentSuccess'])->name('payment.success');
+        Route::get('/payment/cancel', [PlanPaymentController::class, 'paymentCancel'])->name('payment.cancel');
     Route::get('ads', [AdsController::class, 'index']);
 
     // ----------------------------
@@ -69,20 +72,14 @@ Route::prefix('v1')->group(function () {
         Route::get('profile', [UserProfileController::class, 'index']);
         Route::post('profile', [UserProfileController::class, 'storeAndUpdate']);
         Route::get('user-reports', [UserController::class, 'getUserReport']);
-        // Protected - create/delete
-        Route::post('individual-plans', [IndividualPlanController::class, 'store']);
-        Route::delete('individual-plans/{id}', [IndividualPlanController::class, 'destroy']);
+        
 
-        Route::post('professional-plans', [ProfessionalPlanController::class, 'store']);
-        Route::delete('professional-plans/{id}', [ProfessionalPlanController::class, 'destroy']);
-
-        //Payment for individual user & professional user
+       
 
            //subscription payment
-        Route::post('/payment/process', [PaymentController::class, 'processPayment']);
-        Route::get('/all-payments', [PaymentController::class, 'index'])->name('payment.index');//admin show all
-        Route::get('/payment/show', [PaymentController::class, 'show']);
-
+         Route::post('/payment/process', [PlanPaymentController::class, 'processPayment']);
+        Route::get('/all-payments', [PlanPaymentController::class, 'index'])->name('payment.index'); // admin show all
+        Route::get('/payment/show', [PlanPaymentController::class, 'show']);
 
 
         // Admin Route: Create/Update Terms & Conditions
@@ -141,9 +138,21 @@ Route::prefix('v1')->group(function () {
         Route::get('/admin/users/{id}', [UserListController::class, 'getUserById']);
         Route::delete('/admin/users/{id}', [UserListController::class, 'destroy']);
 
-        Route::apiResource('plans', PlanController::class);
-        Route::post('plans/toggle-status/{id}', [PlanController::class, 'toggleStatus']);
-        Route::get('/plans/{type}', [PlanController::class, 'getPlansByType']);
+      
+            // Create plan
+            Route::post('plans', [PlanController::class, 'store'])->name('plans.store');
+
+            // Update plan
+            Route::put('plans/{id}', [PlanController::class, 'update'])->name('plans.update');
+
+            // Delete plan
+            Route::delete('plans/{id}', [PlanController::class, 'destroy'])->name('plans.destroy');
+
+            // Toggle status
+            Route::post('plans/toggle-status/{id}', [PlanController::class, 'toggleStatus'])->name('plans.toggleStatus');
+
+            // Get plans by type (individual/professional)
+            Route::get('plans/type/{type}', [PlanController::class, 'getPlansByType'])->name('plans.byType');
 
 
         //trainer dashbaord 

@@ -28,6 +28,7 @@ class User extends Authenticatable
         'otp_expire_at',
         'terms_accepted',
         'status',
+        'plan_id',
     ];
 
     /**
@@ -129,4 +130,12 @@ class User extends Authenticatable
     }
 
 
+
+
+
+//for auto updated user plan id 
+    public function plan()
+    {
+        return $this->belongsTo(\App\Models\Plan::class, 'plan_id');
+    }
 }

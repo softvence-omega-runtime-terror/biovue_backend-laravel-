@@ -10,13 +10,13 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Roles
+        // 1. Roles and Terms
         $this->call([
             RolesTableSeeder::class,
             TermsAndConditionSeeder::class,
         ]);
 
-        // Create users
+        // 2. Users create
         $admin = User::updateOrCreate(
             ['email' => 'admin@example.com'],
             [
@@ -50,10 +50,9 @@ class DatabaseSeeder extends Seeder
         );
         $individual->assignRole('individual');
 
-        // Now seed plans using user IDs
+        // 3. Plans seed using admin
         $this->call([
-            IndividualPlansSeeder::class,
-            ProfessionalPlansSeeder::class,
+            PlansSeeder::class,
         ]);
     }
 }
