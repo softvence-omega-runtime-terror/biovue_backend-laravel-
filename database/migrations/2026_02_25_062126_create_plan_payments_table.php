@@ -16,21 +16,12 @@ class CreatePlanPaymentsTable extends Migration
                 ->constrained()
                 ->cascadeOnDelete();
 
-            // Plan source (only one will be filled)
-            $table->foreignId('individual_plan_id')
-                ->nullable()
-                ->constrained('individual_plans')
-                ->nullOnDelete();
+           
 
-            $table->foreignId('professional_plan_id')
+            $table->foreignId('plan_id')
                 ->nullable()
-                ->constrained('professional_plans')
+                ->constrained('plans')
                 ->nullOnDelete();
-
-            // $table->foreignId('plan_id')
-            //     ->nullable()
-            //     ->constrained('plans')
-            //     ->nullOnDelete();
 
             // Payment info
             $table->string('payment_method')->default('stripe');
