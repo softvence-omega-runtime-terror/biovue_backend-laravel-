@@ -27,10 +27,10 @@ class CreatePlanPaymentsTable extends Migration
                 ->constrained('professional_plans')
                 ->nullOnDelete();
 
-            $table->foreignId('plan_id')
-                ->nullable()
-                ->constrained('plans')
-                ->nullOnDelete();
+            // $table->foreignId('plan_id')
+            //     ->nullable()
+            //     ->constrained('plans')
+            //     ->nullOnDelete();
 
             // Payment info
             $table->string('payment_method')->default('stripe');
