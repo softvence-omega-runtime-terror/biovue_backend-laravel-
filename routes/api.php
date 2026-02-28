@@ -16,6 +16,7 @@ use App\Http\Controllers\TermsAndConditionController;
 use App\Http\Controllers\Auth\FirebaseAuthController;
 use App\Http\Controllers\HydrationLog\HydrationController;
 use App\Http\Controllers\HydrationLog\HydrationReportController;
+use App\Http\Controllers\Message\MessageController;
 use App\Http\Controllers\NutritionLog\NutritionController;
 use App\Http\Controllers\ProgramsSet\ProgramsSetController;
 use App\Http\Controllers\SleepLog\SleepController;
@@ -145,11 +146,16 @@ Route::prefix('v1')->group(function () {
         Route::get('/plans/{type}', [PlanController::class, 'getPlansByType']);
 
 
-//trainer dashbaord 
+        //trainer dashbaord 
        Route::resource('program-sets', ProgramsSetController::class);
        
         Route::get('users/individuals', [UserController::class, 'individualUsers']);
         Route::post('program-sets/assign-users', [ProgramsSetController::class, 'assignUsers']);
+
+        // Messaging
+        Route::post('/messages/send', [MessageController::class, 'sendMessage']);
+        Route::get('/messages/{id}', [MessageController::class, 'getMessages']);
+        Route::get('/conversations', [MessageController::class, 'getConversations']);
 
     });
 });
