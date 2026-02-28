@@ -27,6 +27,7 @@ use App\Http\Controllers\TargetGoal\TargetGoalController;
 use App\Http\Controllers\User\UserProfileController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Payment\PlanPaymentController;
+use App\Http\Controllers\ContactController;
 
 
 Route::prefix('v1')->group(function () {
@@ -56,6 +57,7 @@ Route::prefix('v1')->group(function () {
 
     // Public Route: Get Terms & Conditions
     Route::get('terms', [TermsAndConditionController::class, 'get']);
+    Route::post('/contact', [ContactController::class, 'store']);
 
  
     // Stripe Webhook
