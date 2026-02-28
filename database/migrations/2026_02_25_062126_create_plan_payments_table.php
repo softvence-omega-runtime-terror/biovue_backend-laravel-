@@ -28,14 +28,13 @@ class CreatePlanPaymentsTable extends Migration
             $table->string('transaction_id')->nullable()->unique(); // nullable for pending payments
             $table->decimal('amount', 10, 2);
             $table->string('currency', 10)->default('usd');
-            $table->string('platform')->default('web'); // web / app
+           
 
             // payment status
             $table->enum('status', ['unpaid', 'paid', 'failed', 'refunded'])
                   ->default('unpaid');
 
-            // optional (very useful for Stripe)
-            $table->timestamp('paid_at')->nullable();
+          
 
             $table->timestamps();
             $table->softDeletes();
