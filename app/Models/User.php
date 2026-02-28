@@ -59,16 +59,7 @@ class User extends Authenticatable
 
 
 
-    public function individualPlans()
-    {
-        return $this->hasMany(IndividualPlan::class);
-    }
-
-    public function professionalPlans()
-    {
-        return $this->hasMany(ProfessionalPlan::class);
-    }
-
+   
     public function profile() 
     { 
         return $this->hasOne(UserProfile::class); 
