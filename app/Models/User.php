@@ -122,13 +122,38 @@ class User extends Authenticatable
         return $this->hasMany(PlanPayment::class, 'user_id');
     }
 
-
-
-
-
-//for auto updated user plan id 
+    //for auto updated user plan id 
     public function plan()
     {
         return $this->belongsTo(\App\Models\Plan::class, 'plan_id');
     }
+
+    public function sendUserNotify($type, $content) 
+    {
+        $settings = $this->notificationSettings; 
+        $canSend = false;
+
+        if (!$settings) return;
+
+        if ($type === 'goal_updates') $canSend = $settings->enable_goal_updates;
+        if ($type === 'coach_messages') $canSend = $settings->enable_coach_messages;
+        if ($type === 'missed_checkin') $canSend = $settings->enable_missed_checkin_alerts;
+
+        if ($canSend) {
+
+            $this->notify(new \App\Notifications\GeneralNotification([
+                'title' => $content['title'],
+                'message' => $content['message'],
+                'type' => $type,
+                'url' => $content['url'] ?? '#'
+            ]));
+        }
+    }
+
+    public function notificationSettings() 
+    {
+        return $this->hasOne(UserNotificationSetting::class);
+    }
+
+    
 }

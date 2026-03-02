@@ -100,4 +100,63 @@ class UserController extends Controller
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
+
+
+    public function getHealthReport($userId = null)
+    {
+        $id = $userId ?: auth()->id();
+        
+        $user = \App\Models\User::with(['profile', 'targetGoals', 'adjustPrograms'])->find($id);
+
+        if (!$user) return response()->json(['message' => 'User not found'], 404);
+
+        $thisWeekLogs = \DB::table('daily_logs')
+            ->where('user_id', $id)
+            ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
+            ->get();
+
+        $totalSteps = $thisWeekLogs->sum('steps');
+        $avgSleep = $thisWeekLogs->avg('sleep_hours') ?? 0; 
+        $entriesCount = $thisWeekLogs->count();
+
+        $currentWeight = $user->profile->weight ?? 0;
+        $targetWeight = $user->targetGoals->target_weight ?? 0;
+        $weightDiff = $currentWeight - $targetWeight;
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'summary' => [
+                    'wellness_score' => $this->calculateWellnessScore($id),
+                    'days_active' => $thisWeekLogs->pluck('created_at')->unique()->count() . '/7',
+                    'data_logged_this_week' => $entriesCount,
+                ],
+
+                'health_overview' => [
+                    'weight' => [
+                        'current' => $currentWeight . ' lbs',
+                        'status' => $weightDiff > 0 ? "+{$weightDiff} lbs above ideal" : "On track",
+                        'coach_target' => $targetWeight . ' lbs'
+                    ],
+                    'weekly_workouts' => [
+                        'completed' => $thisWeekLogs->where('workout_done', true)->count(), 
+                        'coach_plan' => $user->adjustPrograms->weekly_workouts ?? 'N/A'
+                    ],
+                    'daily_steps' => [
+                        'current' => $totalSteps,
+                        'coach_plan' => $user->targetGoals->daily_step_goal ?? 0
+                    ],
+                    'sleep_hours' => [
+                        'current' => round($avgSleep, 1) . ' Hrs',
+                        'coach_plan' => $user->adjustPrograms->sleep_target_range ?? 'N/A'
+                    ]
+                ],
+
+                'ui_settings' => [
+                    'show_progress_graphs' => (bool)$user->adjustPrograms->show_progress_graphs,
+                    'show_ai_insights' => (bool)$user->adjustPrograms->show_ai_insights,
+                ]
+            ]
+        ]);
+    }
 }

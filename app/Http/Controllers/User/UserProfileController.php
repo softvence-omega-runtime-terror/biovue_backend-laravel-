@@ -16,63 +16,68 @@ class UserProfileController extends Controller
 
     public function storeAndUpdate(Request $request)
     {
-        // Validate request data
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
+            'user_type' => 'required|in:individual,professional',
+            'profession_type' => 'nullable|string|in:trainer_coach,nutritionist,supplement_supplier',
             'age' => 'nullable|integer',
             'sex' => 'nullable|string|max:20',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', 
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
             'height' => 'nullable|integer',
             'weight' => 'nullable|integer',
-            'body_fat' => 'nullable|string|max:20',
             'location' => 'nullable|string|max:255',
-            'agreed_terms' => 'boolean',
-            'smoking_status' => 'boolean',
-            'alcohol_consumption' => 'boolean',
-            'stress_level' => 'nullable|integer|min:1|max:10',
-            'daily_step' => 'nullable|integer',
-            'sleep_hour' => 'nullable|numeric',
-            'water_consumption_week' => 'nullable|string|max:50',
-            'overall_diet_quality' => 'nullable|string|max:50',
-            'fast_food_frequency' => 'nullable|string|max:50',
-            'strength_training_week' => 'nullable|string|max:50',
-            'workout_week' => 'nullable|string|max:50',
-            'is_athletic' => 'boolean',
-            'toned' => 'boolean',
-            'lean' => 'boolean',
-            'muscular' => 'boolean',
-            'curvy_fit' => 'boolean',
-            'notes' => 'nullable|string|max:255',
+            'bio' => 'nullable|string',
+            'specialties' => 'nullable|array',
+            'services' => 'nullable|array',
+            'experience_years' => 'nullable|integer',
         ]);
 
-        if ($request->hasFile('image')) 
-        {
-            $oldProfile = UserProfile::where('user_id', $validated['user_id'])->first();
+        $user = \App\Models\User::find($validated['user_id']);
+        $user->update([
+            'user_type' => $validated['user_type'],
+            'profession_type' => $validated['profession_type'] ?? $user->profession_type,
+        ]);
 
+        if ($request->hasFile('image')) {
+            $oldProfile = \App\Models\UserProfile::where('user_id', $validated['user_id'])->first();
             if ($oldProfile && $oldProfile->image) {
                 \Storage::disk('public')->delete($oldProfile->image);
             }
-
-            $path = $request->file('image')->store('profiles', 'public');
-            $validated['image'] = $path; 
+            $validated['image'] = $request->file('image')->store('profiles', 'public');
         }
 
-        $profile = UserProfile::updateOrCreate(
+        $profileData = collect($validated)->except(['user_type', 'profession_type'])->toArray();
+
+        $profile = \App\Models\UserProfile::updateOrCreate(
             ['user_id' => $validated['user_id']], 
-            $validated 
+            $profileData 
         );
 
-        if ($profile->image) {
-            $profile->image = asset('storage/' . $profile->image);
-        }
+        $fullUser = \App\Models\User::with('profile')->find($user->id);
+
+        $fullImageUrl = $fullUser->profile && $fullUser->profile->image 
+            ? asset('storage/' . $fullUser->profile->image) 
+            : null;
 
         return response()->json([
             'success' => true,
-            'message' => 'Profile updated successfully',
-            'data' => $profile 
+            'message' => 'Profile and account information updated successfully',
+            'data' => [
+                'user' => [
+                    'id' => $fullUser->id,
+                    'name' => $fullUser->name,
+                    'email' => $fullUser->email,
+                    'user_type' => $fullUser->user_type,
+                    'profession_type' => $fullUser->profession_type,
+                    'status' => $fullUser->status,
+                    'plan_id' => $fullUser->plan_id,
+                ],
+                'profile' => $fullUser->profile ? array_merge($fullUser->profile->toArray(), [
+                    'image' => $fullImageUrl 
+                ]) : null
+            ]
         ]);
     }
-    
 
     public function show($id)
     {

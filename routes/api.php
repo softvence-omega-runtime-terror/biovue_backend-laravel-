@@ -28,7 +28,9 @@ use App\Http\Controllers\User\UserProfileController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Payment\PlanPaymentController;
 use App\Http\Controllers\ContactController;
-
+use App\Http\Controllers\Faq\FaqController;
+use App\Http\Controllers\Notification\NotificationController;
+use App\Http\Controllers\Projection\ProjectionController;
 
 Route::prefix('v1')->group(function () {
 
@@ -59,6 +61,9 @@ Route::prefix('v1')->group(function () {
     Route::get('terms', [TermsAndConditionController::class, 'get']);
     Route::post('/contact', [ContactController::class, 'store']);
 
+    // Public Route: Get FAQs
+    Route::get('/faqs', [FaqController::class, 'index']);
+
  
     // Stripe Webhook
         Route::post('payment/webhook', [PlanPaymentController::class, 'handleWebhook']);
@@ -75,7 +80,8 @@ Route::prefix('v1')->group(function () {
         Route::post('profile', [UserProfileController::class, 'storeAndUpdate']);
         Route::get('user-reports', [UserController::class, 'getUserReport']);
         
-
+        //getHealthReport
+        Route::get('/health-report', [UserController::class, 'getHealthReport']);
        
 
            //subscription payment
@@ -122,10 +128,10 @@ Route::prefix('v1')->group(function () {
         Route::post('/send-reminder', [ScheduleController::class, 'sendReminder']);
         Route::get('/my-reminders', [ScheduleController::class, 'getMyReminders']);
 
-        Route::post('/goals', [TargetGoalController::class, 'store']);
-        Route::get('/goals/{id}', [TargetGoalController::class, 'show']);
+        Route::post('/goals', [TargetGoalController::class, 'storeOrUpdate']);
+        Route::get('/goals', [TargetGoalController::class, 'getGoal']);
 
-        Route::post('/adjust-program', [AdjustProgramController::class, 'store']);
+        Route::post('/adjust-program', [AdjustProgramController::class, 'storeOrUpdate']);
         Route::get('/adjust-program/{id}', [AdjustProgramController::class, 'show']);
 
         Route::post('ads', [AdsController::class, 'storeOrUpdate']);
@@ -139,6 +145,11 @@ Route::prefix('v1')->group(function () {
         Route::get('/admin/users', [UserListController::class, 'getUser']);
         Route::get('/admin/users/{id}', [UserListController::class, 'getUserById']);
         Route::delete('/admin/users/{id}', [UserListController::class, 'destroy']);
+
+        // FAQ Routes
+        Route::get('/admin/faqs', [FaqController::class, 'adminIndex']);
+        Route::post('/faqs', [FaqController::class, 'storeOrUpdate']);
+        Route::delete('/faqs/{id}', [FaqController::class, 'destroy']);
 
       
             // Create plan
@@ -167,6 +178,13 @@ Route::prefix('v1')->group(function () {
         Route::post('/messages/send', [MessageController::class, 'sendMessage']);
         Route::get('/messages/{id}', [MessageController::class, 'getMessages']);
         Route::get('/conversations', [MessageController::class, 'getConversations']);
+
+        // Projections
+        Route::post('/projections', [ProjectionController::class, 'generateProjection']);
+
+        Route::post('/user/notification-settings', [NotificationController::class, 'updateSettings']);
+
+        
 
     });
 });
