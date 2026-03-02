@@ -6,5 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class AdjustProgram extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'user_id', 'target_weight', 'weekly_workouts', 'sleep_target_range',
+        'hydration_target', 'show_program_goals', 'show_personal_targets',
+        'show_progress_graphs', 'show_ai_insights', 'primary_focus_area',
+        'note', 'programs'
+    ];
+
+    public function user() {
+        return $this->belongsTo(User::class);
+    }
 }
