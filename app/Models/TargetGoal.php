@@ -6,5 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class TargetGoal extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'user_id', 'target_weight', 'weekly_workout_goal', 
+        'daily_step_goal', 'sleep_target', 'is_active', 
+        'start_date', 'end_date'
+    ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

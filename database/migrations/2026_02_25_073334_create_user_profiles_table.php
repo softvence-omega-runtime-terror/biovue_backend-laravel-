@@ -44,6 +44,13 @@ return new class extends Migration
             $table->boolean('muscular')->default(false); 
             $table->boolean('curvy_fit')->default(false); 
             $table->string('notes')->nullable();
+
+            //Trainer-specific fields
+            $table->text('bio')->nullable();
+            $table->json('specialties')->nullable();
+            $table->json('services')->nullable(); 
+            $table->integer('experience_years')->nullable(); 
+
             $table->timestamps();
         });
     }
