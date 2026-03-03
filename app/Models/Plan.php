@@ -45,4 +45,16 @@ class Plan extends Model
     {
         return $this->hasMany(Subscription::class);
     }
+
+
+
+    // Accessor: annual price
+    public function getAnnualPriceAttribute()
+    {
+        if ($this->price <= 0) {
+            return 0; // free plan
+        }
+
+        return round($this->price * 12 * 0.8, 2); // 20% discount yearly
+    }
 }

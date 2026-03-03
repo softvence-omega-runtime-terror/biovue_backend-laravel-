@@ -28,6 +28,8 @@ use App\Http\Controllers\User\UserProfileController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Payment\PlanPaymentController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\AIObservemetricsController;
+
 use App\Http\Controllers\Faq\FaqController;
 use App\Http\Controllers\Notification\NotificationController;
 use App\Http\Controllers\Projection\ProjectionController;
@@ -61,6 +63,8 @@ Route::prefix('v1')->group(function () {
     Route::get('terms', [TermsAndConditionController::class, 'get']);
     Route::post('/contact', [ContactController::class, 'store']);
 
+    
+
     // Public Route: Get FAQs
     Route::get('/faqs', [FaqController::class, 'index']);
 
@@ -80,6 +84,11 @@ Route::prefix('v1')->group(function () {
         Route::post('profile', [UserProfileController::class, 'storeAndUpdate']);
         Route::get('user-reports', [UserController::class, 'getUserReport']);
         
+
+       //AIObser
+
+       Route::get('/ai-observemetrics', [AIObservemetricsController::class, 'show']);
+       Route::get('/dashboard-metrics', [AIObservemetricsController::class, 'index']);
         //getHealthReport
         Route::get('/health-report', [UserController::class, 'getHealthReport']);
        
