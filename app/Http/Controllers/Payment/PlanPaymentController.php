@@ -145,42 +145,49 @@ public function processPayment(Request $request)
 {
     $request->validate([
         'plan_id' => 'required|exists:plans,id',
+        'billing' => 'required|in:monthly,annual', // add billing input
     ]);
 
     $plan = Plan::findOrFail($request->plan_id);
     $user = auth()->user();
 
+    // Calculate final amount
+    $finalPrice = $plan->price; // default monthly
+    if ($request->billing === 'annual') {
+        $finalPrice = $plan->price * 12 * 0.8; // 12 months × 20% off
+    }
+
     try {
-        // Create a temporary payment record
+        // Create temporary payment record
         $payment = PlanPayment::create([
             'user_id'        => $user->id,
             'plan_id'        => $plan->id,
             'transaction_id' => 'TEMP_' . uniqid(),
-            'amount'         => $plan->price,
+            'amount'         => $finalPrice,
             'currency'       => 'usd',
             'status'         => 'unpaid',
         ]);
 
-        // ✅ Free plan check: jodi plan price 0 hoy
-        if ($plan->price <= 0) {
-            $payment->update(['status' => 'paid']);      // mark payment as paid
-            $user->update(['plan_id' => $plan->id]);     // update user's plan
+        // Free plan check
+        if ($finalPrice <= 0) {
+            $payment->update(['status' => 'paid']);
+            $user->update(['plan_id' => $plan->id]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Free plan activated successfully.',
-                'amount'  => $plan->price,
+                'amount'  => $finalPrice,
             ]);
         }
 
-        // Stripe Checkout Session (only for paid plans)
-        $stripe = new StripeClient(config('services.stripe.secret'));
+        // Stripe Checkout Session
+        $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
         $session = $stripe->checkout->sessions->create([
             'mode' => 'payment',
             'line_items' => [[
                 'price_data' => [
                     'currency'    => 'usd',
-                    'unit_amount' => (int) ($plan->price * 100),
+                    'unit_amount' => (int)($finalPrice * 100),
                     'product_data' => [
                         'name' => $plan->name,
                         'description' => implode(", ", $plan->features ?? []),
@@ -191,6 +198,7 @@ public function processPayment(Request $request)
             'metadata' => [
                 'payment_id' => $payment->id,
                 'user_id'    => $user->id,
+                'billing'    => $request->billing, // optional
             ],
             'success_url' => url('/api/v1/payment/success') . '?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url'  => url('/api/v1/payment/cancel'),
@@ -202,7 +210,7 @@ public function processPayment(Request $request)
             'success'      => true,
             'checkout_url' => $session->url,
             'session_id'   => $session->id,
-            'amount'       => $plan->price,
+            'amount'       => $finalPrice,
         ]);
 
     } catch (\Exception $e) {

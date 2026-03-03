@@ -9,14 +9,50 @@ use Illuminate\Support\Facades\Validator;
 
 class PlanController extends Controller
 {
-    public function index()
-    {
-        $plans = Plan::latest()->get();
+   public function index(Request $request)
+{
+    try {
+        // Query params
+        $type = $request->query('type');       // individual / professional
+        $billing = $request->query('billing'); // monthly / annual
+
+        // Base query
+        $query = Plan::query()->where('status', true);
+
+        // Filter by type if provided
+        if ($type && in_array($type, ['individual', 'professional'])) {
+            $query->where('plan_type', $type);
+        }
+
+        $plans = $query->latest()->get();
+
+        // Format response with price based on billing
+        $data = $plans->map(function ($plan) use ($billing) {
+            return [
+                'id'             => $plan->id,
+                'name'           => $plan->name,
+                'plan_type'      => $plan->plan_type,
+                'billing_cycle'  => $plan->billing_cycle,
+                'duration'       => $plan->duration,
+                'member_limit'   => $plan->member_limit,
+                'features'       => $plan->features,
+                'status'         => $plan->status,
+                'price'          => $billing === 'annual' ? $plan->annual_price : $plan->price,
+            ];
+        });
+
         return response()->json([
             'success' => true,
-            'data' => $plans
+            'data'    => $data
         ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to fetch plans: ' . $e->getMessage(),
+        ], 500);
     }
+}
 
     public function store(Request $request)
     {
@@ -54,14 +90,44 @@ class PlanController extends Controller
         return response()->json(['success' => true, 'message' => 'Plan created successfully', 'data' => $plan], 201);
     }
 
-    public function show($id)
-    {
-        $plan = Plan::find($id);
-        if (!$plan) {
-            return response()->json(['success' => false, 'message' => 'Plan not found'], 404);
-        }
-        return response()->json(['success' => true, 'data' => $plan], 200);
+   public function show(Request $request, $id)
+{
+    try {
+        $plan = Plan::findOrFail($id);
+
+        // Billing param
+        $billing = $request->query('billing'); // monthly or annual
+
+        // Format plan with price according to billing
+        $data = [
+            'id'            => $plan->id,
+            'name'          => $plan->name,
+            'plan_type'     => $plan->plan_type,
+            'billing_cycle' => $plan->billing_cycle,
+            'duration'      => $plan->duration,
+            'member_limit'  => $plan->member_limit,
+            'features'      => $plan->features,
+            'status'        => $plan->status,
+            'price'         => $billing === 'annual' ? $plan->annual_price : $plan->price,
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data'    => $data
+        ], 200);
+
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Plan not found'
+        ], 404);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to fetch plan: ' . $e->getMessage()
+        ], 500);
     }
+}
 
     public function update(Request $request, $id)
     {
