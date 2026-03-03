@@ -28,6 +28,7 @@ use App\Http\Controllers\User\UserProfileController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Payment\PlanPaymentController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\AIObservemetricsController;
 
 
 Route::prefix('v1')->group(function () {
@@ -59,6 +60,9 @@ Route::prefix('v1')->group(function () {
     Route::get('terms', [TermsAndConditionController::class, 'get']);
     Route::post('/contact', [ContactController::class, 'store']);
 
+    
+
+
  
     // Stripe Webhook
         Route::post('payment/webhook', [PlanPaymentController::class, 'handleWebhook']);
@@ -76,7 +80,9 @@ Route::prefix('v1')->group(function () {
         Route::get('user-reports', [UserController::class, 'getUserReport']);
         
 
-       
+       //AIObser
+
+       Route::get('/ai-observemetrics', [AIObservemetricsController::class, 'show']);
 
            //subscription payment
          Route::post('/payment/process', [PlanPaymentController::class, 'processPayment']);
