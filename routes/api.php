@@ -83,6 +83,7 @@ Route::prefix('v1')->group(function () {
        //AIObser
 
        Route::get('/ai-observemetrics', [AIObservemetricsController::class, 'show']);
+       Route::get('/dashboard-metrics', [AIObservemetricsController::class, 'index']);
 
            //subscription payment
          Route::post('/payment/process', [PlanPaymentController::class, 'processPayment']);
