@@ -32,6 +32,7 @@ use App\Http\Controllers\AIObservemetricsController;
 
 use App\Http\Controllers\Faq\FaqController;
 use App\Http\Controllers\Notification\NotificationController;
+use App\Http\Controllers\Product\ProductController;
 use App\Http\Controllers\Projection\ProjectionController;
 
 Route::prefix('v1')->group(function () {
@@ -82,7 +83,9 @@ Route::prefix('v1')->group(function () {
 
         Route::get('profile', [UserProfileController::class, 'index']);
         Route::post('profile', [UserProfileController::class, 'storeAndUpdate']);
+        Route::get('users', [UserController::class, 'index']);
         Route::get('user-reports', [UserController::class, 'getUserReport']);
+        Route::get('log-reports', [UserController::class, 'getLogReport']);
         
 
        //AIObser
@@ -192,6 +195,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/projections', [ProjectionController::class, 'generateProjection']);
 
         Route::post('/user/notification-settings', [NotificationController::class, 'updateSettings']);
+
+        Route::post('/products', [ProductController::class, 'store']);
+        Route::get('/products', [ProductController::class, 'index']);
 
         
 

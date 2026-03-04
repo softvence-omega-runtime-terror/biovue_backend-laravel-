@@ -10,31 +10,44 @@ class UserProfileController extends Controller
 {
     public function index()
     {
-        $profiles = UserProfile::with('user')->get();
+        $profiles = UserProfile::with('user', 'user.medicalHistory')->get();
         return response()->json($profiles);
     }
 
     public function storeAndUpdate(Request $request)
     {
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'user_type' => 'required|in:individual,professional',
+            'user_id'         => 'required|exists:users,id',
+            'user_type'       => 'required|in:individual,professional',
             'profession_type' => 'nullable|string|in:trainer_coach,nutritionist,supplement_supplier',
-            'age' => 'nullable|integer',
-            'sex' => 'nullable|string|max:20',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
-            'height' => 'nullable|integer',
-            'weight' => 'nullable|integer',
-            'location' => 'nullable|string|max:255',
-            'bio' => 'nullable|string',
-            'specialties' => 'nullable|array',
-            'services' => 'nullable|array',
+            
+            'age'              => 'nullable|integer',
+            'sex'              => 'nullable|string|max:20',
+            'image'            => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+            'height'           => 'nullable|integer',
+            'weight'           => 'nullable|integer',
+            'location'         => 'nullable|string|max:255',
+            'bio'              => 'nullable|string',
+            'specialties'      => 'nullable|array',
+            'services'         => 'nullable|array',
             'experience_years' => 'nullable|integer',
+
+            'diabetes'            => 'nullable|boolean',
+            'high_blood_pressure' => 'nullable|boolean',
+            'high_cholesterol'    => 'nullable|boolean',
+            'heart_disease'       => 'nullable|boolean',
+            'asthma'              => 'nullable|boolean',
+            'athritis'            => 'nullable|boolean',
+            'depression'          => 'nullable|boolean',
+            'anxiety'             => 'nullable|boolean',
+            'sleep_apnea'         => 'nullable|boolean',
+            'thyroid_issue'       => 'nullable|boolean',
+            'current_medication'  => 'nullable|string',
         ]);
 
         $user = \App\Models\User::find($validated['user_id']);
         $user->update([
-            'user_type' => $validated['user_type'],
+            'user_type'       => $validated['user_type'],
             'profession_type' => $validated['profession_type'] ?? $user->profession_type,
         ]);
 
@@ -46,14 +59,20 @@ class UserProfileController extends Controller
             $validated['image'] = $request->file('image')->store('profiles', 'public');
         }
 
-        $profileData = collect($validated)->except(['user_type', 'profession_type'])->toArray();
+        $medicalFields = [
+            'diabetes', 'high_blood_pressure', 'high_cholesterol', 'heart_disease', 
+            'asthma', 'athritis', 'depression', 'anxiety', 'sleep_apnea', 
+            'thyroid_issue', 'current_medication'
+        ];
+        $medicalData = collect($validated)->only($medicalFields)->toArray();
 
-        $profile = \App\Models\UserProfile::updateOrCreate(
-            ['user_id' => $validated['user_id']], 
-            $profileData 
-        );
+        $profileData = collect($validated)->except(array_merge(['user_type', 'profession_type'], $medicalFields))->toArray();
 
-        $fullUser = \App\Models\User::with('profile')->find($user->id);
+        \App\Models\UserProfile::updateOrCreate(['user_id' => $validated['user_id']], $profileData);
+
+        \App\Models\UserMedicalHistory::updateOrCreate(['user_id' => $validated['user_id']], $medicalData);
+
+        $fullUser = \App\Models\User::with(['profile', 'medicalHistory'])->find($user->id);
 
         $fullImageUrl = $fullUser->profile && $fullUser->profile->image 
             ? asset('storage/' . $fullUser->profile->image) 
@@ -61,20 +80,18 @@ class UserProfileController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Profile and account information updated successfully',
+            'message' => 'Profile and Medical History updated successfully',
             'data' => [
                 'user' => [
-                    'id' => $fullUser->id,
-                    'name' => $fullUser->name,
-                    'email' => $fullUser->email,
-                    'user_type' => $fullUser->user_type,
+                    'id'              => $fullUser->id,
+                    'name'            => $fullUser->name,
+                    'email'           => $fullUser->email,
+                    'user_type'       => $fullUser->user_type,
                     'profession_type' => $fullUser->profession_type,
-                    'status' => $fullUser->status,
-                    'plan_id' => $fullUser->plan_id,
                 ],
-                'profile' => $fullUser->profile ? array_merge($fullUser->profile->toArray(), [
-                    'image' => $fullImageUrl 
-                ]) : null
+                'profile'         => $fullUser->profile,
+                'medical_history' => $fullUser->medicalHistory,
+                'image_url'       => $fullImageUrl
             ]
         ]);
     }
