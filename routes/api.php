@@ -81,6 +81,7 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('profile', [UserProfileController::class, 'index']);
+        Route::get('profile/{userId}', [UserProfileController::class, 'showByUserId']);
         Route::post('profile', [UserProfileController::class, 'storeAndUpdate']);
         Route::get('user-reports', [UserController::class, 'getUserReport']);
         
