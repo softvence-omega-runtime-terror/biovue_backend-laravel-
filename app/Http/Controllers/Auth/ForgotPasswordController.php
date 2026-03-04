@@ -43,7 +43,7 @@ class ForgotPasswordController extends Controller
 
         $user->update([
             'otp' => $otp,
-            'otp_expires_at' => now()->addMinutes(5),
+            'otp_expire_at' => now()->addMinutes(5),
         ]);
 
         SendOtpEmail::dispatch($user->id, 'forgot', $otp);
