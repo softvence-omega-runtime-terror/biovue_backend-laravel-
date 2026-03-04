@@ -5,28 +5,34 @@ namespace App\Http\Controllers\Subscription;
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class PlanController extends Controller
 {
-   public function index(Request $request)
+    /**
+     * List plans (with optional type & billing filter)
+     */
+   /**
+ * List plans (with optional type & billing filter)
+ */
+public function index(Request $request)
 {
     try {
-        // Query params
         $type = $request->query('type');       // individual / professional
-        $billing = $request->query('billing'); // monthly / annual
+        $billing = strtolower($request->query('billing', 'monthly')); // monthly/annual, default monthly
 
-        // Base query
+        // Validate billing param
+        if (!in_array($billing, ['monthly', 'annual'])) {
+            $billing = 'monthly';
+        }
+
         $query = Plan::query()->where('status', true);
 
-        // Filter by type if provided
         if ($type && in_array($type, ['individual', 'professional'])) {
             $query->where('plan_type', $type);
         }
 
         $plans = $query->latest()->get();
 
-        // Format response with price based on billing
         $data = $plans->map(function ($plan) use ($billing) {
             return [
                 'id'             => $plan->id,
@@ -54,13 +60,15 @@ class PlanController extends Controller
     }
 }
 
-    public function store(Request $request)
-    {
-        if (!$request->user()->hasRole('admin')) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
 
-        $validator = Validator::make($request->all(), [
+
+    /**
+     * Create or Update Plan (single POST method)
+     */
+    public function storeOrUpdatePlan(Request $request)
+    {
+        $request->validate([
+            'id' => 'nullable|integer|exists:plans,id', // if updating
             'name' => 'required|string|max:255',
             'plan_type' => 'required|in:individual,professional',
             'billing_cycle' => 'required|in:days,monthly,annual,custom',
@@ -71,34 +79,84 @@ class PlanController extends Controller
             'status' => 'boolean'
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        try {
+            // If ID provided → update
+            if ($request->filled('id')) {
+                $plan = Plan::find($request->id);
+
+                if (!$plan) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Plan not found.'
+                    ], 404);
+                }
+
+                // Prevent modifying fixed seeded plans
+                if (in_array($plan->id, [1,2,3,4,5,6,7,8])) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'This plan is fixed and cannot be modified.'
+                    ], 403);
+                }
+
+                $plan->update([
+                    'name' => $request->name,
+                    'plan_type' => $request->plan_type,
+                    'billing_cycle' => $request->billing_cycle,
+                    'price' => $request->price,
+                    'duration' => $request->duration,
+                    'member_limit' => $request->plan_type === 'professional' ? $request->member_limit : null,
+                    'features' => $request->features,
+                    'status' => $request->status ?? true,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Plan updated successfully.',
+                    'data' => $plan
+                ], 200);
+            }
+
+            // Otherwise → create new plan
+            $plan = Plan::create([
+                'name' => $request->name,
+                'plan_type' => $request->plan_type,
+                'user_id' => $request->user()->id,
+                'billing_cycle' => $request->billing_cycle,
+                'price' => $request->price,
+                'duration' => $request->duration,
+                'member_limit' => $request->plan_type === 'professional' ? $request->member_limit : null,
+                'features' => $request->features,
+                'status' => $request->status ?? true,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Plan created successfully.',
+                'data' => $plan
+            ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong. Error: ' . $e->getMessage()
+            ], 500);
         }
-
-        $plan = Plan::create([
-            'name' => $request->name,
-            'plan_type' => $request->plan_type,
-            'user_id' => $request->user()->id, 
-            'billing_cycle' => $request->billing_cycle,
-            'price' => $request->price,
-            'duration' => $request->duration,
-            'member_limit' => $request->plan_type === 'professional' ? $request->member_limit : null,
-            'features' => $request->features,
-            'status' => $request->status ?? true,
-        ]);
-
-        return response()->json(['success' => true, 'message' => 'Plan created successfully', 'data' => $plan], 201);
     }
 
-   public function show(Request $request, $id)
+    /**
+ * Show single plan
+ */
+public function show(Request $request, $id)
 {
     try {
         $plan = Plan::findOrFail($id);
 
-        // Billing param
-        $billing = $request->query('billing'); // monthly or annual
+        $billing = strtolower($request->query('billing', 'monthly')); // monthly/annual default
+        if (!in_array($billing, ['monthly', 'annual'])) {
+            $billing = 'monthly';
+        }
 
-        // Format plan with price according to billing
         $data = [
             'id'            => $plan->id,
             'name'          => $plan->name,
@@ -129,43 +187,23 @@ class PlanController extends Controller
     }
 }
 
-    public function update(Request $request, $id)
-    {
-        $plan = Plan::find($id);
-        if (!$plan) return response()->json(['success' => false, 'message' => 'Plan not found'], 404);
-
-        $plan->update($request->all());
-
-        return response()->json(['success' => true, 'message' => 'Plan updated successfully', 'data' => $plan], 200);
-    }
-
+    /**
+     * Delete plan
+     */
     public function destroy($id)
     {
         $plan = Plan::find($id);
         if (!$plan) return response()->json(['success' => false, 'message' => 'Plan not found'], 404);
 
-        $plan->delete();
-        return response()->json(['success' => true, 'message' => 'Plan deleted successfully'], 200);
-    }
-
-    public function toggleStatus($id)
-    {
-        $plan = Plan::find($id);
-        if (!$plan) return response()->json(['success' => false, 'message' => 'Plan not found'], 404);
-
-        $plan->status = !$plan->status;
-        $plan->save();
-
-        return response()->json(['success' => true, 'message' => 'Plan status updated successfully', 'data' => $plan], 200);
-    }
-
-    public function getPlansByType($type)
-    {
-        if (!in_array($type, ['individual', 'professional'])) {
-            return response()->json(['success' => false, 'message' => 'Invalid plan type'], 400);
+        // Prevent deleting fixed plans
+        if (in_array($plan->id, [1,2,3,4,5,6,7,8])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This plan is fixed and cannot be deleted.'
+            ], 403);
         }
 
-        $plans = Plan::where('plan_type', $type)->where('status', true)->get();
-        return response()->json(['success' => true, 'data' => $plans], 200);
+        $plan->delete();
+        return response()->json(['success' => true, 'message' => 'Plan deleted successfully'], 200);
     }
 }

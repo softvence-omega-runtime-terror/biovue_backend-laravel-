@@ -159,13 +159,28 @@ class ProgramsSetController extends Controller
 public function assignUsers(Request $request)
 {
     $request->validate([
-        'program_set_id' => 'required|integer|exists:programs_sets,id',
+        'program_set_id' => 'required|integer',
         'user_ids' => 'required|array',
         'user_ids.*' => 'integer|exists:users,id',
     ]);
 
     try {
-        $programSet = ProgramSet::findOrFail($request->program_set_id);
+        $programSet = ProgramSet::find($request->program_set_id);
+
+        if (!$programSet) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Program not found.'
+            ], 404);
+        }
+
+        // যদি user_ids খালি হয়
+        if (empty($request->user_ids)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No users found to assign for this program.'
+            ], 404);
+        }
 
         $programSet->users()->sync($request->user_ids);
 
