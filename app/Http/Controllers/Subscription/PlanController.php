@@ -62,88 +62,52 @@ public function index(Request $request)
 
 
 
-    /**
-     * Create or Update Plan (single POST method)
-     */
-    public function storeOrUpdatePlan(Request $request)
-    {
-        $request->validate([
-            'id' => 'nullable|integer|exists:plans,id', // if updating
-            'name' => 'required|string|max:255',
-            'plan_type' => 'required|in:individual,professional',
-            'billing_cycle' => 'required|in:days,monthly,annual,custom',
-            'price' => 'required|numeric|min:0',
-            'duration' => 'nullable|integer',
-            'member_limit' => 'nullable|integer',
-            'features' => 'nullable|array',
-            'status' => 'boolean'
-        ]);
+        public function storeOrUpdatePlan(Request $request)
+        {
+            $request->validate([
+                'id' => 'nullable|integer|exists:plans,id', // optional for update
+                'name' => 'required|string|max:255',
+                'plan_type' => 'required|in:individual,professional',
+                'billing_cycle' => 'required|in:days,monthly,annual,custom',
+                'price' => 'required|numeric|min:0',
+                'duration' => 'nullable|integer',
+                'member_limit' => 'nullable|integer',
+                'features' => 'nullable|array',
+                'status' => 'boolean'
+            ]);
 
-        try {
-            // If ID provided → update
-            if ($request->filled('id')) {
-                $plan = Plan::find($request->id);
+            try {
+                // Use updateOrCreate
+                $plan = Plan::updateOrCreate(
+                    ['id' => $request->id], // if id exists → update, otherwise create
+                    [
+                        'name' => $request->name,
+                        'plan_type' => $request->plan_type,
+                        'user_id' => $request->user()->id,
+                        'billing_cycle' => $request->billing_cycle,
+                        'price' => $request->price,
+                        'duration' => $request->duration,
+                        'member_limit' => $request->plan_type === 'professional' ? $request->member_limit : null,
+                        'features' => $request->features,
+                        'status' => $request->status ?? true,
+                    ]
+                );
 
-                if (!$plan) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Plan not found.'
-                    ], 404);
-                }
-
-                // Prevent modifying fixed seeded plans
-                if (in_array($plan->id, [1,2,3,4,5,6,7,8])) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'This plan is fixed and cannot be modified.'
-                    ], 403);
-                }
-
-                $plan->update([
-                    'name' => $request->name,
-                    'plan_type' => $request->plan_type,
-                    'billing_cycle' => $request->billing_cycle,
-                    'price' => $request->price,
-                    'duration' => $request->duration,
-                    'member_limit' => $request->plan_type === 'professional' ? $request->member_limit : null,
-                    'features' => $request->features,
-                    'status' => $request->status ?? true,
-                ]);
+                $message = $request->filled('id') ? 'Plan updated successfully.' : 'Plan created successfully.';
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Plan updated successfully.',
+                    'message' => $message,
                     'data' => $plan
-                ], 200);
+                ], $request->filled('id') ? 200 : 201);
+
+            } catch (\Exception $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Something went wrong. Error: ' . $e->getMessage()
+                ], 500);
             }
-
-            // Otherwise → create new plan
-            $plan = Plan::create([
-                'name' => $request->name,
-                'plan_type' => $request->plan_type,
-                'user_id' => $request->user()->id,
-                'billing_cycle' => $request->billing_cycle,
-                'price' => $request->price,
-                'duration' => $request->duration,
-                'member_limit' => $request->plan_type === 'professional' ? $request->member_limit : null,
-                'features' => $request->features,
-                'status' => $request->status ?? true,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Plan created successfully.',
-                'data' => $plan
-            ], 201);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Something went wrong. Error: ' . $e->getMessage()
-            ], 500);
         }
-    }
-
     /**
  * Show single plan
  */
