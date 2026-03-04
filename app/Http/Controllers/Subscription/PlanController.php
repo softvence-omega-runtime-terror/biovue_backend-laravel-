@@ -151,6 +151,51 @@ public function show(Request $request, $id)
     }
 }
 
+
+
+
+/**
+ * Toggle plan status (active/inactive)
+ */
+public function toggleStatus($id)
+{
+    try {
+        $plan = Plan::findOrFail($id);
+
+        // Prevent toggling fixed plans
+        if (in_array($plan->id, [1,2,3,4,5,6,7,8])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This plan is fixed and cannot be modified.'
+            ], 403);
+        }
+
+        // Toggle status
+        $plan->status = !$plan->status;
+        $plan->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Plan status updated successfully.',
+            'data' => [
+                'id' => $plan->id,
+                'status' => $plan->status
+            ]
+        ], 200);
+
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Plan not found.'
+        ], 404);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to update plan status: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
     /**
      * Delete plan
      */
