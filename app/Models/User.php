@@ -99,7 +99,7 @@ class User extends Authenticatable
 
     public function adjustProgram()
     { 
-        return $this->hasOne(AdjustProgram::class); 
+        return $this->hasOne(AdjustProgram::class, 'user_id'); 
     }
 
     protected $appends = ['image_url'];
@@ -155,5 +155,9 @@ class User extends Authenticatable
         return $this->hasOne(UserNotificationSetting::class);
     }
 
-    
+    public function medicalHistory() 
+    {
+        return $this->hasOne(UserMedicalHistory::class, 'user_id');
+    }
+
 }
