@@ -46,6 +46,8 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('Password123!'),
                 'email_verified_at' => now(),
                 'status' => true,
+                 'user_type' => 'professional',         // default added
+                'profession_type' => 'trainer_coach',  // default added
             ]
         );
         $individual->assignRole('individual');
