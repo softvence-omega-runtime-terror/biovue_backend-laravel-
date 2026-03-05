@@ -60,6 +60,8 @@ class LoginController extends Controller
                     'role' => $user->getRoleNames()->first() ?? null,
                     'plan_id' => $user->plan_id,
                     'plan_name' => $user->plan->name?? null,
+                     'user_type' => $user->user_type ?? null,          // <-- added
+                    'profession_type' => $user->profession_type ?? null, // <-- added
                     
                     
                 ],

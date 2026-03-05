@@ -154,7 +154,7 @@ public function processPayment(Request $request)
     // Calculate final amount
     $finalPrice = $plan->price; // default monthly
     if ($request->billing === 'annual') {
-        $finalPrice = $plan->price * 12 * 0.8; // 12 months × 20% off
+        $finalPrice = $plan->price * 12 * 0.9; // 12 months × 20% off
     }
 
     try {
@@ -200,7 +200,11 @@ public function processPayment(Request $request)
                 'user_id'    => $user->id,
                 'billing'    => $request->billing, // optional
             ],
-            'success_url' => url('/api/v1/payment/success') . '?session_id={CHECKOUT_SESSION_ID}',
+            // 'success_url' => url('/api/v1/payment/success') . '?session_id={CHECKOUT_SESSION_ID}',
+            // 'cancel_url'  => url('/api/v1/payment/cancel'),
+
+
+            'success_url' => 'https://biovue-frontend.vercel.app/payment/show?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url'  => url('/api/v1/payment/cancel'),
         ]);
 

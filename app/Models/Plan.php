@@ -55,6 +55,6 @@ class Plan extends Model
             return 0; // free plan
         }
 
-        return round($this->price * 12 * 0.8, 2); // 20% discount yearly
+        return round($this->price * 12 * 0.9, 2); // 10% discount yearly
     }
 }
