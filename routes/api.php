@@ -163,6 +163,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/admin/faqs', [FaqController::class, 'adminIndex']);
         Route::post('/faqs', [FaqController::class, 'storeOrUpdate']);
         Route::delete('/faqs/{id}', [FaqController::class, 'destroy']);
+        Route::post('/faqs/status/{id}', [FaqController::class, 'toggleActive']);
 
       
             // Create plan
