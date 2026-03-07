@@ -5,6 +5,7 @@ namespace App\Http\Controllers\ProgramsSet;
 use App\Http\Controllers\Controller;
 use App\Models\ProgramSet;
 use Illuminate\Http\Request;
+use App\Notifications\ProgramAssignedNotification;
 
 class ProgramsSetController extends Controller
 {
@@ -156,6 +157,55 @@ class ProgramsSetController extends Controller
 
 
 
+// public function assignUsers(Request $request)
+// {
+//     $request->validate([
+//         'program_set_id' => 'required|integer',
+//         'user_ids' => 'required|array',
+//         'user_ids.*' => 'integer|exists:users,id',
+//     ]);
+
+//     try {
+//         $programSet = ProgramSet::find($request->program_set_id);
+
+//         if (!$programSet) {
+//             return response()->json([
+//                 'status' => false,
+//                 'message' => 'Program not found.'
+//             ], 404);
+//         }
+
+//         // যদি user_ids খালি হয়
+//         if (empty($request->user_ids)) {
+//             return response()->json([
+//                 'status' => false,
+//                 'message' => 'No users found to assign for this program.'
+//             ], 404);
+//         }
+
+//         $programSet->users()->sync($request->user_ids);
+
+//         $users = $programSet->users()
+//             ->select('users.id', 'users.name', 'users.email')
+//             ->get();
+
+//         return response()->json([
+//             'status' => true,
+//             'message' => 'Users assigned successfully.',
+//             'data' => $users
+//         ], 200);
+
+//     } catch (\Exception $e) {
+//         return response()->json([
+//             'status' => false,
+//             'message' => 'Failed to assign users. Error: '.$e->getMessage()
+//         ], 500);
+//     }
+// }
+   
+
+
+
 public function assignUsers(Request $request)
 {
     $request->validate([
@@ -182,15 +232,22 @@ public function assignUsers(Request $request)
             ], 404);
         }
 
+        // Assign users to the program
         $programSet->users()->sync($request->user_ids);
 
+        // Fetch assigned users
         $users = $programSet->users()
             ->select('users.id', 'users.name', 'users.email')
             ->get();
 
+        // Send notification to each assigned user
+        foreach ($users as $user) {
+            $user->notify(new ProgramAssignedNotification($programSet));
+        }
+
         return response()->json([
             'status' => true,
-            'message' => 'Users assigned successfully.',
+            'message' => 'Users assigned successfully and notifications sent.',
             'data' => $users
         ], 200);
 
@@ -201,5 +258,40 @@ public function assignUsers(Request $request)
         ], 500);
     }
 }
-   
+
+
+
+
+  /**
+     * Get all unread notifications for logged-in user
+     */
+    public function unread(Request $request)
+    {
+        $notifications = $request->user()->unreadNotifications()->get()->map(function($n) {
+            return [
+                'id' => $n->id,
+                'message' => $n->data['message'],
+                'program_id' => $n->data['program_id'],
+                'program_name' => $n->data['program_name'],
+                'read_at' => $n->read_at,
+                'created_at' => $n->created_at,
+            ];
+        });
+
+        return response()->json([
+            'status' => true,
+            'data' => $notifications
+        ]);
+    }
+
+    /**
+     * Mark a notification as read
+     */
+    public function markRead(Request $request, $id)
+    {
+        $notification = $request->user()->notifications()->findOrFail($id);
+        $notification->markAsRead();
+
+        return response()->json(['status' => true]);
+    }
 }

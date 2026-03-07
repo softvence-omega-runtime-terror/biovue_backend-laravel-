@@ -203,5 +203,12 @@ Route::prefix('v1')->group(function () {
 
           Route::post('/plans/store-or-update', [PlanController::class, 'storeOrUpdatePlan']);
 
+
+
+
+        
+        // Get all unread notifications for logged-in user
+           Route::get('/notifications', [ProgramsSetController::class, 'unread']);
+        Route::post('/notifications/mark-read/{id}', [ProgramsSetController::class, 'markRead']);
     });
 });
