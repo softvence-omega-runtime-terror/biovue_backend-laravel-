@@ -62,6 +62,7 @@ class LoginController extends Controller
                     'plan_name' => $user->plan->name?? null,
                      'user_type' => $user->user_type ?? null,          // <-- added
                     'profession_type' => $user->profession_type ?? null, // <-- added
+                   
                     
                     
                 ],

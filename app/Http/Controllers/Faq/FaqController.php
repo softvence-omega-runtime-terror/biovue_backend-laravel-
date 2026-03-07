@@ -84,4 +84,21 @@ class FaqController extends Controller
         }
         return response()->json(['message' => 'FAQ not found'], 404);
     }
+
+    public function toggleActive($id)
+    {
+        if (!auth()->user()->hasRole('admin')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized. Only an Admin can manage FAQs.'
+                ], 403);
+            }
+        $faq = Faq::find($id);
+        if ($faq) {
+            $faq->is_active = !$faq->is_active;
+            $faq->save();
+            return response()->json(['message' => 'FAQ status toggled successfully', 'data' => $faq]);
+        }
+        return response()->json(['message' => 'FAQ not found'], 404);
+    }   
 }

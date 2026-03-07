@@ -43,6 +43,17 @@ class UserProfileController extends Controller
             'sleep_apnea'         => 'nullable|boolean',
             'thyroid_issue'       => 'nullable|boolean',
             'current_medication'  => 'nullable|string',
+            'smoking_status'       => 'nullable|boolean',
+            'alcohol_consumption' => 'nullable|boolean',    
+            'stress_level'         => 'nullable|string',
+            'daily_step'          => 'nullable|integer',
+            'sleep_hour'          => 'nullable|numeric',
+            'water_consumption_week'   => 'nullable|numeric',
+            'overall_diet_quality' => 'nullable|string',
+            'fast_food_frequency' => 'nullable|string',
+            'strength_training_week' => 'nullable|string',
+            'workout_week' => 'nullable|string',
+            'is_athletic' => 'nullable|boolean',
         ]);
 
         $user = \App\Models\User::find($validated['user_id']);
