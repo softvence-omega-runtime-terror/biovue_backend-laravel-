@@ -136,6 +136,8 @@ Route::prefix('v1')->group(function () {
         Route::delete('/nutrition-logs/{id}', [NutritionController::class, 'destroy']);
         Route::get('/nutrition-report', [NutritionController::class, 'getNutritionReport']);
 
+        Route::get('get-card-data', [UserController::class, 'getDashboardData']);
+
         Route::get('/calendar-schedules', [ScheduleController::class, 'index']);
         Route::post('/schedule-checkin', [ScheduleController::class, 'storeSchedule']);
         Route::post('/send-reminder', [ScheduleController::class, 'sendReminder']);

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Models\UserMedicalHistory;
 use App\Models\UserProfile;
 use Illuminate\Http\Request;
 
@@ -56,14 +58,14 @@ class UserProfileController extends Controller
             'is_athletic' => 'nullable|boolean',
         ]);
 
-        $user = \App\Models\User::find($validated['user_id']);
+        $user = User::find($validated['user_id']);
         $user->update([
             'user_type'       => $validated['user_type'],
             'profession_type' => $validated['profession_type'] ?? $user->profession_type,
         ]);
 
         if ($request->hasFile('image')) {
-            $oldProfile = \App\Models\UserProfile::where('user_id', $validated['user_id'])->first();
+            $oldProfile = UserProfile::where('user_id', $validated['user_id'])->first();
             if ($oldProfile && $oldProfile->image) {
                 \Storage::disk('public')->delete($oldProfile->image);
             }
@@ -79,11 +81,11 @@ class UserProfileController extends Controller
 
         $profileData = collect($validated)->except(array_merge(['user_type', 'profession_type'], $medicalFields))->toArray();
 
-        \App\Models\UserProfile::updateOrCreate(['user_id' => $validated['user_id']], $profileData);
+        UserProfile::updateOrCreate(['user_id' => $validated['user_id']], $profileData);
 
-        \App\Models\UserMedicalHistory::updateOrCreate(['user_id' => $validated['user_id']], $medicalData);
+        UserMedicalHistory::updateOrCreate(['user_id' => $validated['user_id']], $medicalData);
 
-        $fullUser = \App\Models\User::with(['profile', 'medicalHistory'])->find($user->id);
+        $fullUser = User::with(['profile', 'medicalHistory'])->find($user->id);
 
         $fullImageUrl = $fullUser->profile && $fullUser->profile->image 
             ? asset('storage/' . $fullUser->profile->image) 
@@ -101,8 +103,7 @@ class UserProfileController extends Controller
                     'profession_type' => $fullUser->profession_type,
                 ],
                 'profile'         => $fullUser->profile,
-                'medical_history' => $fullUser->medicalHistory,
-                'image_url'       => $fullImageUrl
+                'medical_history' => $fullUser->medicalHistory
             ]
         ]);
     }

@@ -35,6 +35,8 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('Password123!'),
                 'email_verified_at' => now(),
                 'status' => true,
+                'user_type' => 'professional',        
+                'profession_type' => 'trainer_coach',
             ]
         );
         $professional->assignRole('professional');
@@ -46,8 +48,8 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('Password123!'),
                 'email_verified_at' => now(),
                 'status' => true,
-                 'user_type' => 'professional',         // default added
-                'profession_type' => 'trainer_coach',  // default added
+                'user_type' => 'individual',       
+                'profession_type' => null,
             ]
         );
         $individual->assignRole('individual');
