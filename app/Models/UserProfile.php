@@ -20,4 +20,9 @@ class UserProfile extends Model
             get: fn ($value) => $value ? asset('storage/' . $value) : null,
         );
     }
+
+    protected $casts = [
+        'specialties' => 'array',
+        'services' => 'array',
+    ];
 }
