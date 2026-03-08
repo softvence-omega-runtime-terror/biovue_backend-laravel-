@@ -35,6 +35,7 @@ use App\Http\Controllers\Product\ProductController;
 use App\Http\Controllers\Projection\ProjectionController;
 use App\Http\Controllers\AI\InsightController;
 use App\Http\Controllers\AI\FutureInsightController;
+use App\Http\Controllers\AI\MealPlanController;
 
 
 Route::prefix('v1')->group(function () {
@@ -90,6 +91,10 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/future-insights/fetch', [FutureInsightController::class, 'fetchFutureInsights']);
         Route::get('/future-insights', [FutureInsightController::class, 'showUserFutureInsights']);
+        //Nutrition mealcontroller
+
+        Route::post('/meal-generate', [MealPlanController::class, 'generateMealPlan']);
+         Route::get('/meal-plan', [MealPlanController::class, 'showUserMealPlan']);
 
         Route::get('profile', [UserProfileController::class, 'index']);
         Route::get('profile/{userId}', [UserProfileController::class, 'showByUserId']);
