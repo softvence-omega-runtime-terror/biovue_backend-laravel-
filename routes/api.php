@@ -38,6 +38,7 @@ use App\Http\Controllers\AI\FutureInsightController;
 use App\Http\Controllers\AI\MealPlanController;
 use App\Http\Controllers\AI\ProjectionLifestyleController;
 use App\Http\Controllers\AI\ProjectionFutureGoalController;
+use App\Http\Controllers\AI\RecommendationController;
 
 Route::prefix('v1')->group(function () {
 
@@ -108,6 +109,10 @@ Route::prefix('v1')->group(function () {
 
         // Get the latest projection for the authenticated user
         Route::get('/projection-future-goal/latest', [ProjectionFutureGoalController::class, 'showLatest']);
+        //Recommendation
+         Route::get('/recommend-professionals', [RecommendationController::class, 'index']);
+         Route::get('/trainer-recommended-users/{trainer_id}', [RecommendationController::class, 'trainerUsers']);
+        
 
         Route::get('profile', [UserProfileController::class, 'index']);
         Route::get('profile/{userId}', [UserProfileController::class, 'showByUserId']);
