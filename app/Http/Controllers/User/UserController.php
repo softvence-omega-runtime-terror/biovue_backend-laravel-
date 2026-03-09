@@ -506,4 +506,227 @@ class UserController extends Controller
             'percentage' => round(($count / $totalDays) * 100)
         ];
     }
+
+    public function userOverviewChart(Request $request)
+    {
+        $user = $request->user();
+        $id = $user->id;
+        
+        $daysCount = (int) $request->query('days', 7); 
+        $startDate = now()->subDays($daysCount - 1)->startOfDay();
+        $endDate = now()->endOfDay();
+
+        $userData = \App\Models\User::with(['profile', 'targetGoals', 'adjustPrograms'])->find($id);
+
+        $activity = DB::table('activity_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+        $hydration = DB::table('hydration_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+        $sleep = DB::table('sleep_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+        $stress = DB::table('stress_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+        $nutrition = DB::table('nutrition_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+
+        $chartData = [];
+        $period = \Carbon\CarbonPeriod::create($startDate, $endDate);
+
+        foreach ($period as $date) {
+            $formattedDate = $date->toDateString();
+            $actLog = $activity->where('log_date', $formattedDate)->first();
+            $slpLog = $sleep->where('log_date', $formattedDate)->first();
+            $nutLog = $nutrition->where('log_date', $formattedDate)->first();
+
+            $chartData[] = [
+                'label' => $daysCount <= 7 ? $date->format('D') : $date->format('d M'),
+                'weight' => $actLog ? (float)$actLog->weight : null,
+                'steps' => $actLog ? (int)$actLog->daily_steps : 0,
+                'sleep_hours' => $slpLog ? (float)$slpLog->sleep_hours : 0,
+                'nutrition' => [
+                    'protein' => $nutLog ? (int)$nutLog->protein_servings : 0,
+                    'carbs' => $nutLog ? (int)$nutLog->carbs_servings : 0,
+                    'fats' => $nutLog ? (int)$nutLog->fats_servings : 0,
+                ]
+            ];
+        }
+
+        $latestWeight = $activity->last()->weight ?? ($userData->profile->weight ?? 0);
+        $bmi = 0;
+        if ($userData->profile->height > 0 && $latestWeight > 0) {
+            $heightM = $userData->profile->height / 100;
+            $weightK = $latestWeight * 0.453592; 
+            $bmi = round($weightK / ($heightM * $heightM), 1);
+        }
+
+        return response()->json([
+            'success' => true,
+            'summary' => [
+                'wellness_score' => 72,
+                'days_active' => $activity->unique('log_date')->count() . "/$daysCount",
+                'entries_count' => $activity->count() + $nutrition->count() + $sleep->count()
+            ],
+            'health_overview' => [
+                'weight' => [
+                    'current' => $latestWeight,
+                    'target' => $userData->targetGoals->target_weight ?? 0,
+                    'note' => $userData->targetGoals->notes ?? "Target updated by coach"
+                ],
+                'bmi' => [
+                    'score' => $bmi,
+                    'target' => $userData->targetGoals->target_bmi ?? 26.0,
+                    'status' => $bmi > 24.9 ? "Higher than range" : "Healthy"
+                ],
+                'steps' => [
+                    'avg' => (int)$activity->avg('daily_steps'),
+                    'target' => $userData->targetGoals->daily_step_goal ?? 6500
+                ]
+            ],
+            'charts' => $chartData, 
+            'consistency' => [
+                'sleep' => $this->calcConsist('Sleep', $sleep, $daysCount, 7),
+                'activity' => $this->calcConsist('Activity', $activity, $daysCount, 6500, 'daily_steps'),
+                'hydration' => $this->calcConsist('Hydration', $hydration, $daysCount, 8, 'water_glasses'),
+                'nutrition' => $this->calcConsist('Nutrition', $nutrition, $daysCount, 3, 'protein_servings')
+            ]
+        ]);
+    }
+
+    private function calcConsist($title, $logs, $days, $target, $col = 'sleep_hours')
+    {
+        $count = $logs->count();
+        $avg = round($logs->avg($col) ?? 0, 1);
+        return [
+            'title' => $title,
+            'avg' => "$avg avg this week",
+            'percentage' => round(($count / $days) * 100),
+            'status' => ($count >= ($days * 0.7)) ? "ON TRACK" : "Need Attention"
+        ];
+    }
+
+    public function trainerOverview(Request $request)
+    {
+        try {
+            $coachId = auth()->id();
+            
+            $clientsQuery = User::where('user_type', 'individual')
+                ->whereHas('targetGoals', function($q) use ($coachId) {
+                    $q->where('id', $coachId);
+                }) ;
+
+            $activeCount = (clone $clientsQuery)->count();
+            
+            $attentionCount = (clone $clientsQuery)->whereDoesntHave('activityLogs', function($q) {
+                $q->where('log_date', '>=', now()->subDays(2));
+            })->count();
+
+            $clientsTable = (clone $clientsQuery)->with(['targetGoals', 'activityLogs' => function($q) {
+                    $q->latest('log_date');
+                }])
+                ->get()
+                ->map(function($user) {
+                    $latestLog = $user->activityLogs->first();
+                    $lastLogDate = $latestLog ? \Carbon\Carbon::parse($latestLog->log_date) : null;
+                    $diff = $lastLogDate ? now()->diffInDays($lastLogDate) : null;
+
+                    return [
+                        'user_name'       => $user->name,
+                        'goal'            => $user->targetGoals->goal_name ?? 'General wellness',
+                        'projection_used' => '3/10',
+                        'status'          => ($diff === null || $diff >= 3) ? 'Need attention' : 'On track',
+                        'activity'        => $this->resolveActivityText($diff, $lastLogDate),
+                        'user_id'         => $user->id
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'stats' => [
+                    'active_clients'    => ['value' => $activeCount, 'label' => 'Currently coached'],
+                    'needing_attention' => ['value' => $attentionCount, 'label' => 'Off-track or low activity'],
+                    'pending_messages'  => ['value' => 3, 'label' => 'Unread client messages'], 
+                    'todays_checkins'   => ['value' => 7, 'label' => 'Scheduled Today'] 
+                ],
+                'client_table' => $clientsTable,
+                'today_actions' => [
+                    ['title' => 'Review progress', 'desc' => 'Check recent updates', 'link' => '/admin/clients'],
+                    ['title' => 'Send motivation', 'desc' => 'Sera encouragement or reminders', 'link' => '/admin/messages'],
+                    ['title' => 'Review check-ins', 'desc' => 'View scheduled check-ins', 'link' => '/admin/calendar']
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    private function resolveActivityText($diff, $date)
+    {
+        if ($diff === null) return "Missed check-in";
+        if ($diff === 0) return "Logged today";
+        if ($diff < 3) return "Logged " . $date->diffForHumans();
+        return "No log in $diff days";
+    }
+    
+
+    public function connectToProfession(Request $request)
+    {
+        $request->validate([
+            'profession_id' => 'required|exists:users,id',
+        ]);
+
+        try {
+            $user = auth()->user();
+            $professionId = $request->profession_id;
+
+            if ($user->id == $professionId) {
+                return response()->json(['success' => false, 'message' => "You can't connect to yourself"], 400);
+            }
+
+            $user->connections()->syncWithoutDetaching([$professionId]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Successfully connected to the professional',
+                'data' => [
+                    'user_id' => $user->id,
+                    'connected_to' => $professionId
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getMyConnections()
+{
+    try {
+        $user = auth()->user(); 
+
+        // আইডি ২ এর জন্য এই কন্ডিশনটি সত্য হবে কারণ তার টাইপ 'professional'
+        if ($user->user_type === 'professional' || $user->user_type === 'trainer' || $user->user_type === 'coach') {
+            
+            // প্রফেশনাল (২) তার ক্লায়েন্টদের (৩) খুঁজছেন
+            $connections = $user->belongsToMany(\App\Models\User::class, 'connect_user_proffesions', 'profession_id', 'user_id')
+                                ->get(['users.id', 'users.name', 'users.email']); 
+            $message = "Your connected clients";
+        } 
+        else {
+            // ক্লায়েন্ট (৩) তার প্রফেশনালকে (২) খুঁজছেন
+            $connections = $user->belongsToMany(\App\Models\User::class, 'connect_user_proffesions', 'user_id', 'profession_id')
+                                ->get(['users.id', 'users.name', 'users.email']); 
+            $message = "Professionals you are following";
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'current_user' => [
+                'id' => $user->id,
+                'type' => $user->user_type
+            ],
+            'count' => $connections->count(),
+            'data' => $connections
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+    }
+}
 }

@@ -168,4 +168,15 @@ class User extends Authenticatable
         return $this->hasOne(UserMedicalHistory::class, 'user_id');
     }
 
+    public function myProfessionals()
+    {
+        return $this->belongsToMany(User::class, 'connect_user_proffesions', 'user_id', 'profession_id')
+                    ->withTimestamps();
+    }
+
+    public function myClients()
+    {
+        return $this->belongsToMany(User::class, 'connect_user_proffesions', 'profession_id', 'user_id')
+                    ->withTimestamps();
+    }
 }

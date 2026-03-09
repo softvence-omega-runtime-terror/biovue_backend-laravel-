@@ -4,6 +4,7 @@ namespace App\Http\Controllers\TargetGoal;
 use App\Http\Controllers\Controller;
 
 use App\Models\TargetGoal;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -36,7 +37,7 @@ class TargetGoalController extends Controller
             array_merge($validated, ['is_active' => true])
         );
 
-        $client = \App\Models\User::find($validated['user_id']);
+        $client = User::find($validated['user_id']);
         $client->sendUserNotify('goal_updates', [
             'title' => 'New Goal Set',
             'message' => 'Your coach has updated your fitness targets.',
@@ -52,7 +53,7 @@ class TargetGoalController extends Controller
 
     public function getGoal()
     {
-        $goal = TargetGoal::where('user_id', Auth::id())->where('is_active', true)->first();
+        $goal = TargetGoal::where('user_id', Auth::id())->where('is_active', true)->get();
 
         return response()->json([
             'success' => true,
