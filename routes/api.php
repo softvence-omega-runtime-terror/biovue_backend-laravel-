@@ -97,6 +97,7 @@ Route::prefix('v1')->group(function () {
         Route::get('users', [UserController::class, 'index']);
         Route::get('user-reports', [UserController::class, 'getUserReport']);
         Route::get('log-reports', [UserController::class, 'getLogReport']);
+        Route::get('user-overview', [UserController::class, 'userOverviewData']);    
         
 
        //AIObser
@@ -105,6 +106,8 @@ Route::prefix('v1')->group(function () {
        Route::get('/dashboard-metrics', [AIObservemetricsController::class, 'index']);
         //getHealthReport
         Route::get('/health-report', [UserController::class, 'getHealthReport']);
+
+        Route::post('/users/toggle-active/{id}', [UserController::class, 'toggleActiveUser']);
        
 
            //subscription payment

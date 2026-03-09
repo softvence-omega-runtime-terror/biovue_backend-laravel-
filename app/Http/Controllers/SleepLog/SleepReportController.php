@@ -15,18 +15,15 @@ class SleepReportController extends Controller
         $startDate = now()->subDays(6)->format('Y-m-d');
         $endDate = now()->format('Y-m-d');
 
-        // ১. স্লিপ লগ ডাটা আনা (hydration_logs টেবিল থেকে)
         $sleepData = DB::table('hydration_logs')
             ->where('user_id', $user->id)
             ->whereBetween('log_date', [$startDate, $endDate])
             ->get()->keyBy(fn($item) => \Carbon\Carbon::parse($item->log_date)->format('D'));
 
-        // ২. স্লিপ চার্ট তৈরি (Key-Value Format)
         $sleepChart = $days->mapWithKeys(fn($day) => [
             $day => (float)($sleepData->get($day)->sleep_hours ?? 0)
         ]);
 
-        // ৩. স্ট্যাটস ক্যালকুলেশন
         $avgSleep = DB::table('hydration_logs')->where('user_id', $user->id)->avg('sleep_hours') ?? 0;
         
         $totalLogs = DB::table('hydration_logs')
@@ -36,13 +33,12 @@ class SleepReportController extends Controller
         
         $consistency = round(($totalLogs / 7) * 100);
 
-        // ৪. ট্রেন্ড লজিক (গড় ঘুম ৭ ঘণ্টার বেশি হলে Improving)
         $currentTrend = ($avgSleep >= 7) ? 'Improving' : 'Stable';
 
         return response()->json([
             'success' => true,
             'sleep_progress' => [
-                'chart' => $sleepChart, // {"Mon": 6.5, "Tue": 7.2...}
+                'chart' => $sleepChart,
                 'average' => round($avgSleep, 1) . ' Hrs',
                 'best_streak' => $this->calculateStreak($user->id, 'hydration_logs') . ' DAYS',
                 'consistency' => $consistency . '%',

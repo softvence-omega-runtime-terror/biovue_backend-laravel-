@@ -7,6 +7,7 @@ use App\Models\SleepLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class SleepController extends Controller
 {
@@ -38,50 +39,62 @@ class SleepController extends Controller
             ->firstOrFail(); 
     }
 
-    public function getSleepReport(Request $request)
-    {
-        $userId = auth()->id();
-        $type = $request->query('type', 'weekly'); 
-        
-        $endDate = Carbon::today();
-        $startDate = $this->getStartDate($type);
 
-        $logs = SleepLog::where('user_id', $userId)
-            ->whereBetween('log_date', [$startDate, $endDate])
+
+    public function getSleepReport(Request $request, $userId = null)
+
+    {
+        $id = $userId ?: auth()->id();
+        
+        $days = (int) $request->query('days', 7); 
+        $startDate = Carbon::now()->subDays($days - 1)->startOfDay();
+        $endDate = Carbon::now()->endOfDay();
+
+        $sleepLogs = DB::table('sleep_logs')
+            ->where('user_id', $id)
+            ->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])
             ->orderBy('log_date', 'asc')
             ->get();
 
-        $formattedLogs = $logs->keyBy(fn($item) => Carbon::parse($item->log_date)->format('Y-m-d'));
+        $chartData = [];
+        
+        for ($i = 0; $i < $days; $i++) {
+            $currentDate = Carbon::now()->subDays(($days - 1) - $i)->toDateString();
+            
+            $log = $sleepLogs->where('log_date', $currentDate)->first();
 
-        $chartData = $this->generateSleepChartData($type, $startDate, $endDate, $formattedLogs, $userId);
+            $chartData[] = [
+                'date' => Carbon::parse($currentDate)->format('d M'), 
+                'sleep_hours' => $log ? (float) $log->sleep_hours : 0,
+                'label' => Carbon::parse($currentDate)->format('D'),
+            ];
+        }
 
-        $avgSleep = $logs->avg('sleep_hours') ?? 0;
-        $daysWithData = $logs->where('sleep_hours', '>', 0)->count();
-        $totalDays = $startDate->diffInDays($endDate) + 1;
-        $consistency = ($daysWithData / $totalDays) * 100;
+        $avgSleep = $sleepLogs->avg('sleep_hours') ?? 0;
+        $loggedDaysCount = $sleepLogs->where('sleep_hours', '>', 0)->count();
+        $consistency = ($days > 0) ? round(($loggedDaysCount / $days) * 100) : 0;
 
         return response()->json([
-            'status' => 'success',
-            'data' => [
-                'chart_data' => $chartData,
-                'statistics' => [
-                    'average_sleep' => number_format($avgSleep, 1) . " Hrs",
-                    'consistency' => round($consistency) . "%",
-                    'best_streak' => $this->calculateStreak($userId) . " DAYS",
-                    'current_trend' => $this->getTrendStatus($chartData),
-                ],
-                'bio_insight' => $this->generateBioInsight($consistency, $avgSleep)
-            ]
+            'success' => true,
+            'period' => "Past $days Days",
+            'statistics' => [
+                'average_sleep' => number_format($avgSleep, 1) . " Hrs",
+                'consistency' => $consistency . "%",
+                'total_logged' => "$loggedDaysCount / $days Days",
+            ],
+            'chart_data' => $chartData
         ]);
     }
 
-    private function getStartDate($type) {
-        return match($type) {
-            'monthly' => Carbon::today()->subDays(29),
-            '3_months' => Carbon::today()->subMonths(3),
-            default => Carbon::today()->subDays(6),
-        };
-    }
+private function getStartDate($type) {
+    return match($type) {
+        'weekly' => Carbon::now()->subDays(6),
+        'monthly' => Carbon::now()->subDays(30), 
+        '3_months' => Carbon::now()->subMonths(3),
+        '6_months' => Carbon::now()->subMonths(6),
+        default => Carbon::now()->subDays(6),
+    };
+}
 
     private function generateSleepChartData($type, $startDate, $endDate, $logs, $userId) {
         $data = [];

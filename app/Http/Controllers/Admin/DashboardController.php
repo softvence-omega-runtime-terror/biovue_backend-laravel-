@@ -13,12 +13,10 @@ class DashboardController extends Controller
     public function getAdminStats(Request $request)
     {
         try {
-            if (!$request->user()->hasRole('admin')) {
-                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-            }
+            
 
             $lastMonthStart = now()->subMonth()->startOfMonth();
-            $totalUsersAtStart = DB::table('plan_payments')->where('status', 'paid')->where('paid_at', '<', $lastMonthStart)->count();
+            $totalUsersAtStart = DB::table('plan_payments')->where('status', 'paid')->where('created_at', '<', $lastMonthStart)->count();
             $churnedUsers = DB::table('plan_payments')->whereIn('status', ['refunded', 'failed'])->whereBetween('updated_at', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()])->count();
             $dynamicChurnRate = $totalUsersAtStart > 0 ? number_format(($churnedUsers / $totalUsersAtStart) * 100, 1) . '%' : '0%';
 
@@ -27,7 +25,7 @@ class DashboardController extends Controller
                 'active_users'        => User::where('status', true)->count(),
                 'total_subscriptions' => DB::table('plan_payments')->where('status', 'paid')->count(),
                 'total_revenue'       => '$' . number_format(DB::table('plan_payments')->where('status', 'paid')->sum('amount'), 2),
-                'monthly_revenue'     => '$' . number_format(DB::table('plan_payments')->where('status', 'paid')->whereMonth('paid_at', now()->month)->sum('amount'), 2),
+                'monthly_revenue'     => '$' . number_format(DB::table('plan_payments')->where('status', 'paid')->whereMonth('created_at', now()->month)->sum('amount'), 2),
                 'churn_rate'          => $dynamicChurnRate
             ];
 
@@ -41,9 +39,9 @@ class DashboardController extends Controller
                 ->orderBy(DB::raw("MIN(created_at)"), 'ASC')
                 ->get();
 
-            $revenueTrend = DB::table('plan_payments')->select(DB::raw('sum(amount) as amount'), DB::raw("DATE_FORMAT(paid_at, '%b') as month"))
-                ->where('status', 'paid')->where('paid_at', '>=', now()->subMonths(6))
-                ->groupBy('month')->orderBy(DB::raw("MIN(paid_at)"), 'ASC')->get();
+            $revenueTrend = DB::table('plan_payments')->select(DB::raw('sum(amount) as amount'), DB::raw("DATE_FORMAT(created_at, '%b') as month"))
+                ->where('status', 'paid')->where('created_at', '>=', now()->subMonths(6))
+                ->groupBy('month')->orderBy(DB::raw("MIN(created_at)"), 'ASC')->get();
 
             $planSummary = DB::table('plan_payments')
                 ->join('users', 'plan_payments.user_id', '=', 'users.id')
