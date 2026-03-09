@@ -15,9 +15,14 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->string('image'); // uploaded image filename
-            $table->string('duration')->default('1 year'); // e.g., "6 months", "1 year", "5 years"
-            $table->string('resolution')->default('2K'); // "2K" or "4K"
-            $table->string('tier')->default('ultra'); // "ultra" or "fast"
+             $table->enum('duration', ['6 months', '1 year', '5 years'])
+                  ->default('1 year');
+
+            $table->enum('resolution', ['2K', '4K'])
+                  ->default('2K');
+
+            $table->enum('tier', ['ultra', 'fast'])
+                  ->default('ultra');
             $table->boolean('use_default_goal')->default(true); // whether using default goal
             $table->text('goal')->nullable(); // custom goal, nullable
             $table->text('goal_description')->nullable(); // custom goal description, nullable
