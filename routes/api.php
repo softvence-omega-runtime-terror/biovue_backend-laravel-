@@ -36,7 +36,8 @@ use App\Http\Controllers\Projection\ProjectionController;
 use App\Http\Controllers\AI\InsightController;
 use App\Http\Controllers\AI\FutureInsightController;
 use App\Http\Controllers\AI\MealPlanController;
-
+use App\Http\Controllers\AI\ProjectionLifestyleController;
+use App\Http\Controllers\AI\ProjectionFutureGoalController;
 
 Route::prefix('v1')->group(function () {
 
@@ -95,6 +96,18 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/meal-generate', [MealPlanController::class, 'generateMealPlan']);
          Route::get('/meal-plan', [MealPlanController::class, 'showUserMealPlan']);
+
+         //project-lifestyle
+         Route::post('/projection-lifestyle', [ProjectionLifestyleController::class, 'store']);
+         // projection-lifestyle latest
+        Route::get('/projection-lifestyle/latest', [ProjectionLifestyleController::class, 'showLatest']);
+
+        //Projection goal
+        // Store a new future goal projection
+         Route::post('/projection-future-goal', [ProjectionFutureGoalController::class, 'store']);
+
+        // Get the latest projection for the authenticated user
+        Route::get('/projection-future-goal/latest', [ProjectionFutureGoalController::class, 'showLatest']);
 
         Route::get('profile', [UserProfileController::class, 'index']);
         Route::get('profile/{userId}', [UserProfileController::class, 'showByUserId']);
