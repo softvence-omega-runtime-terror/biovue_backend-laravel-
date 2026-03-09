@@ -112,8 +112,8 @@ Route::prefix('v1')->group(function () {
         //Recommendation
          Route::get('/recommend-professionals', [RecommendationController::class, 'index']);
          Route::get('/trainer-recommended-users/{trainer_id}', [RecommendationController::class, 'trainerUsers']);
-        
-
+        Route::get('/nutritionist-recommended-users/{nutritionist_id}', [RecommendationController::class, 'nutritionistUsers']);
+        Route::get('/supplier-recommended-users/{supplier_id}', [RecommendationController::class, 'supplierUsers']);
         Route::get('profile', [UserProfileController::class, 'index']);
         Route::get('profile/{userId}', [UserProfileController::class, 'showByUserId']);
         Route::post('profile', [UserProfileController::class, 'storeAndUpdate']);
