@@ -35,7 +35,8 @@ use App\Http\Controllers\Product\ProductController;
 use App\Http\Controllers\Projection\ProjectionController;
 use App\Http\Controllers\AI\InsightController;
 use App\Http\Controllers\AI\FutureInsightController;
-
+use App\Http\Controllers\User\TrainerController;
+use App\Http\Controllers\Supplyer\SupplyerController;
 
 Route::prefix('v1')->group(function () {
 
@@ -97,9 +98,13 @@ Route::prefix('v1')->group(function () {
         Route::get('users', [UserController::class, 'index']);
         Route::get('user-reports', [UserController::class, 'getUserReport']);
         Route::get('log-reports', [UserController::class, 'getLogReport']);
-        Route::get('user-overview', [UserController::class, 'userOverviewData']);    
-        
+        Route::get('user-overview', [UserController::class, 'userOverviewData']);
+        Route::get('userOverviewChart', [UserController::class, 'userOverviewChart']);    
+        Route::get('trainer-overview', [UserController::class, 'trainerOverview']);
+        Route::post('connect-profession', [UserController::class, 'connectToProfession']);
+        Route::get('connected-professions', [UserController::class, 'getMyConnections']);
 
+        Route::get('professionals-data/{id}', [TrainerController::class, 'indexProfessionals']);
        //AIObser
 
        Route::get('/ai-observemetrics', [AIObservemetricsController::class, 'show']);
@@ -215,6 +220,7 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/products', [ProductController::class, 'store']);
         Route::get('/products', [ProductController::class, 'index']);
+        Route::post('/products/status/{id}', [ProductController::class, 'updateProductStatus']); 
 
           Route::post('/plans/store-or-update', [PlanController::class, 'storeOrUpdatePlan']);
 
@@ -225,5 +231,7 @@ Route::prefix('v1')->group(function () {
         // Get all unread notifications for logged-in user
            Route::get('/notifications', [ProgramsSetController::class, 'unread']);
         Route::post('/notifications/mark-read/{id}', [ProgramsSetController::class, 'markRead']);
+
+        Route::get('supplyer-dashboard',[SupplyerController::class,'index']);
     });
 });

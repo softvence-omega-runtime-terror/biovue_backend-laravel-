@@ -60,4 +60,29 @@ class ProductController extends Controller
             'data'    => $products
         ]);
     }
+
+    public function updateProductStatus(Request $request, $id)
+    {
+        try {
+            $product = Product::where('supplier_id', auth()->id())
+                        ->findOrFail($id);
+
+            $newStatus = $request->status;
+            
+            if (!in_array($newStatus, ['draft', 'published'])) {
+                return response()->json(['success' => false, 'message' => 'Invalid status'], 400);
+            }
+
+            $product->update(['status' => $newStatus]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Product marked as " . ucfirst($newStatus),
+                'current_status' => $product->status
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => 'Product not found or unauthorized'], 404);
+        }
+    }
 }
