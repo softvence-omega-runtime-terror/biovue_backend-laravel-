@@ -29,6 +29,7 @@ return new class extends Migration
                 'supplement_supplier'
             ])->nullable();
             $table->integer('turning_possibility')->default(0);
+            $table->boolean('is_active')->default(true);
             $table->rememberToken();
             $table->timestamps();
         });
