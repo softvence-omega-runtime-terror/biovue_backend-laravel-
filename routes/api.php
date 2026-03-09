@@ -37,6 +37,10 @@ use App\Http\Controllers\AI\InsightController;
 use App\Http\Controllers\AI\FutureInsightController;
 use App\Http\Controllers\User\TrainerController;
 use App\Http\Controllers\Supplyer\SupplyerController;
+use App\Http\Controllers\AI\MealPlanController;
+use App\Http\Controllers\AI\ProjectionLifestyleController;
+use App\Http\Controllers\AI\ProjectionFutureGoalController;
+use App\Http\Controllers\AI\RecommendationController;
 
 Route::prefix('v1')->group(function () {
 
@@ -91,7 +95,27 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/future-insights/fetch', [FutureInsightController::class, 'fetchFutureInsights']);
         Route::get('/future-insights', [FutureInsightController::class, 'showUserFutureInsights']);
+        //Nutrition mealcontroller
 
+        Route::post('/meal-generate', [MealPlanController::class, 'generateMealPlan']);
+         Route::get('/meal-plan', [MealPlanController::class, 'showUserMealPlan']);
+
+         //project-lifestyle
+         Route::post('/projection-lifestyle', [ProjectionLifestyleController::class, 'store']);
+         // projection-lifestyle latest
+        Route::get('/projection-lifestyle/latest', [ProjectionLifestyleController::class, 'showLatest']);
+
+        //Projection goal
+        // Store a new future goal projection
+         Route::post('/projection-future-goal', [ProjectionFutureGoalController::class, 'store']);
+
+        // Get the latest projection for the authenticated user
+        Route::get('/projection-future-goal/latest', [ProjectionFutureGoalController::class, 'showLatest']);
+        //Recommendation
+         Route::get('/recommend-professionals', [RecommendationController::class, 'index']);
+         Route::get('/trainer-recommended-users/{trainer_id}', [RecommendationController::class, 'trainerUsers']);
+        Route::get('/nutritionist-recommended-users/{nutritionist_id}', [RecommendationController::class, 'nutritionistUsers']);
+        Route::get('/supplier-recommended-users/{supplier_id}', [RecommendationController::class, 'supplierUsers']);
         Route::get('profile', [UserProfileController::class, 'index']);
         Route::get('profile/{userId}', [UserProfileController::class, 'showByUserId']);
         Route::post('profile', [UserProfileController::class, 'storeAndUpdate']);
