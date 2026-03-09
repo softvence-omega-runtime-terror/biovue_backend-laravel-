@@ -29,11 +29,13 @@ use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Payment\PlanPaymentController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\AIObservemetricsController;
-
 use App\Http\Controllers\Faq\FaqController;
 use App\Http\Controllers\Notification\NotificationController;
 use App\Http\Controllers\Product\ProductController;
 use App\Http\Controllers\Projection\ProjectionController;
+use App\Http\Controllers\AI\InsightController;
+use App\Http\Controllers\AI\FutureInsightController;
+
 
 Route::prefix('v1')->group(function () {
 
@@ -80,6 +82,14 @@ Route::prefix('v1')->group(function () {
     // Protected Routes (Require Auth)
     // ----------------------------
     Route::middleware('auth:sanctum')->group(function () {
+        //AI INsight part
+
+        Route::post('/insights/fetch', [InsightController::class, 'fetchInsights']);
+        // GET show logged-in user insights
+        Route::get('/insights', [InsightController::class, 'showUserInsights']);
+
+        Route::post('/future-insights/fetch', [FutureInsightController::class, 'fetchFutureInsights']);
+        Route::get('/future-insights', [FutureInsightController::class, 'showUserFutureInsights']);
 
         Route::get('profile', [UserProfileController::class, 'index']);
         Route::get('profile/{userId}', [UserProfileController::class, 'showByUserId']);
