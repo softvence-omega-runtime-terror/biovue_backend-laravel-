@@ -603,13 +603,13 @@ class UserController extends Controller
     {
         try {
             $coachId = auth()->id();
-            
+            $totalSignups = User::where('user_type', 'individual')->orWhere('user_type', 'professional')->count();
             $clientsQuery = User::where('user_type', 'individual')
                 ->whereHas('targetGoals', function($q) use ($coachId) {
                     $q->where('id', $coachId);
                 }) ;
 
-            $activeCount = (clone $clientsQuery)->count();
+            $activeCount = $totalSignups;
             
             $attentionCount = (clone $clientsQuery)->whereDoesntHave('activityLogs', function($q) {
                 $q->where('log_date', '>=', now()->subDays(2));
