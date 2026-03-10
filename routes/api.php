@@ -41,6 +41,7 @@ use App\Http\Controllers\AI\MealPlanController;
 use App\Http\Controllers\AI\ProjectionLifestyleController;
 use App\Http\Controllers\AI\ProjectionFutureGoalController;
 use App\Http\Controllers\AI\RecommendationController;
+use App\Http\Controllers\AI\UserHabitUpdateController;
 
 Route::prefix('v1')->group(function () {
 
@@ -87,8 +88,12 @@ Route::prefix('v1')->group(function () {
     // Protected Routes (Require Auth)
     // ----------------------------
     Route::middleware('auth:sanctum')->group(function () {
+
         //AI INsight part
         Route::post('/change-password', [ForgotPasswordController::class, 'changePassword']);
+
+        Route::post('/habits/update', [UserHabitUpdateController::class, 'update']);
+        Route::get('/habits/{user_id}', [UserHabitUpdateController::class, 'show']);
 
         Route::post('/insights/fetch', [InsightController::class, 'fetchInsights']);
         // GET show logged-in user insights
@@ -117,7 +122,9 @@ Route::prefix('v1')->group(function () {
          Route::get('/trainer-recommended-users/{trainer_id}', [RecommendationController::class, 'trainerUsers']);
         Route::get('/nutritionist-recommended-users/{nutritionist_id}', [RecommendationController::class, 'nutritionistUsers']);
         Route::get('/supplier-recommended-users/{supplier_id}', [RecommendationController::class, 'supplierUsers']);
+       
         Route::get('profile', [UserProfileController::class, 'index']);
+
         Route::get('profile/{userId}', [UserProfileController::class, 'showByUserId']);
         Route::post('profile', [UserProfileController::class, 'storeAndUpdate']);
         Route::get('users', [UserController::class, 'index']);

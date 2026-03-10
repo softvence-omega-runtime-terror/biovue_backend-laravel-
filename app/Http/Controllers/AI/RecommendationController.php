@@ -119,25 +119,25 @@ class RecommendationController extends Controller
 
 
 
-
-    public function supplierUsers($supplier_id)
+public function supplierUsers($supplier_id)
 {
     try {
 
         $response = Http::timeout(120)
-            ->withOptions(['verify' => false])
+            ->withoutVerifying() // SSL ignore
             ->get("https://biovue-ai.onrender.com/api/v1/recommend/users/supplier/{$supplier_id}");
 
-        if (!$response->successful()) {
+        if ($response->failed()) {
             return response()->json([
                 'message' => 'Supplier recommendation API failed',
-                'error' => $response->body()
+                'error' => $response->json()
             ], 500);
         }
 
         return response()->json([
             'message' => 'Recommended users fetched successfully',
-            'data' => $response->json()
+            'supplier_id' => $supplier_id,
+            'suggestions' => $response->json()['suggestions'] ?? []
         ]);
 
     } catch (\Exception $e) {
