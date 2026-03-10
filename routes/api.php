@@ -122,7 +122,10 @@ Route::prefix('v1')->group(function () {
          Route::get('/trainer-recommended-users/{trainer_id}', [RecommendationController::class, 'trainerUsers']);
         Route::get('/nutritionist-recommended-users/{nutritionist_id}', [RecommendationController::class, 'nutritionistUsers']);
         Route::get('/supplier-recommended-users/{supplier_id}', [RecommendationController::class, 'supplierUsers']);
+<<<<<<< HEAD
        
+=======
+>>>>>>> f091f51fe035cb02976d9bce4a3281096c5573a5
         Route::get('profile', [UserProfileController::class, 'index']);
 
         Route::get('profile/{userId}', [UserProfileController::class, 'showByUserId']);

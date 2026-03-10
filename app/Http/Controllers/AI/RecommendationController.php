@@ -119,11 +119,17 @@ class RecommendationController extends Controller
 
 
 
+<<<<<<< HEAD
 public function supplierUsers($supplier_id)
+=======
+
+    public function supplierUsers($supplier_id)
+>>>>>>> f091f51fe035cb02976d9bce4a3281096c5573a5
 {
     try {
 
         $response = Http::timeout(120)
+<<<<<<< HEAD
             ->withoutVerifying() // SSL ignore
             ->get("https://biovue-ai.onrender.com/api/v1/recommend/users/supplier/{$supplier_id}");
 
@@ -131,13 +137,26 @@ public function supplierUsers($supplier_id)
             return response()->json([
                 'message' => 'Supplier recommendation API failed',
                 'error' => $response->json()
+=======
+            ->withOptions(['verify' => false])
+            ->get("https://biovue-ai.onrender.com/api/v1/recommend/users/supplier/{$supplier_id}");
+
+        if (!$response->successful()) {
+            return response()->json([
+                'message' => 'Supplier recommendation API failed',
+                'error' => $response->body()
+>>>>>>> f091f51fe035cb02976d9bce4a3281096c5573a5
             ], 500);
         }
 
         return response()->json([
             'message' => 'Recommended users fetched successfully',
+<<<<<<< HEAD
             'supplier_id' => $supplier_id,
             'suggestions' => $response->json()['suggestions'] ?? []
+=======
+            'data' => $response->json()
+>>>>>>> f091f51fe035cb02976d9bce4a3281096c5573a5
         ]);
 
     } catch (\Exception $e) {
