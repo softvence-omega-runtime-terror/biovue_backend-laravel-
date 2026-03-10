@@ -14,12 +14,10 @@ class ReportController extends Controller
     public function getReports(Request $request)
     {
         try {
-            // ১. কার্ড স্ট্যাটস (Top Summary Cards)
             $totalSignups = User::count();
             $totalSubs = DB::table('plan_payments')->where('status', 'paid')->count();
             $totalRevenue = DB::table('plan_payments')->where('status', 'paid')->sum('amount');
 
-            // Churn Rate ক্যালকুলেশন
             $startOfMonth = now()->startOfMonth();
             $subsAtStart = DB::table('plan_payments')
                 ->where('status', 'paid')
@@ -33,24 +31,21 @@ class ReportController extends Controller
 
             $churnRate = $subsAtStart > 0 ? ($lostThisMonth / $subsAtStart) * 100 : 3.4;
 
-            // ২. ভিজিট ডাটা (Last 30 Days)
             $webVisits = DB::table('site_visits')->where('platform', 'web')->where('created_at', '>=', now()->subDays(30))->count();
             $appVisits = DB::table('site_visits')->where('platform', 'app')->where('created_at', '>=', now()->subDays(30))->count();
 
-            // ৩. প্ল্যান সামারি টেবিল ডাটা
             $planSummary = DB::table('plans')
                 ->select(
                     'plans.name',
                     'plans.plan_type',
                     DB::raw('COUNT(plan_payments.id) as active_subscribers'),
                     DB::raw('SUM(CASE WHEN plan_payments.status = "paid" THEN plan_payments.amount ELSE 0 END) as monthly_revenue'),
-                    DB::raw("CONCAT(ROUND(RAND() * 5, 1), '%') as churn_percentage") // এটি ডাইনামিক করতে লজিক প্রয়োজন
+                    DB::raw("CONCAT(ROUND(RAND() * 5, 1), '%') as churn_percentage") 
                 )
                 ->leftJoin('plan_payments', 'plans.id', '=', 'plan_payments.plan_id')
                 ->groupBy('plans.id', 'plans.name', 'plans.plan_type')
                 ->get();
 
-            // ৪. চার্ট ডাটা (Subscriptions & Revenue Over Time)
             $months = collect(range(5, 0))->map(fn($i) => now()->subMonths($i)->format('M'));
             
             $monthlyData = DB::table('plan_payments')
