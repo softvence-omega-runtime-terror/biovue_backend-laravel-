@@ -88,6 +88,7 @@ Route::prefix('v1')->group(function () {
     // ----------------------------
     Route::middleware('auth:sanctum')->group(function () {
         //AI INsight part
+        Route::post('/change-password', [ForgotPasswordController::class, 'changePassword']);
 
         Route::post('/insights/fetch', [InsightController::class, 'fetchInsights']);
         // GET show logged-in user insights
@@ -244,7 +245,9 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/products', [ProductController::class, 'store']);
         Route::get('/products', [ProductController::class, 'index']);
-        Route::post('/products/status/{id}', [ProductController::class, 'updateProductStatus']); 
+        Route::put('/products/{id}', [ProductController::class, 'update']);
+        Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+        Route::post('/products/status/{id}', [ProductController::class, 'updateProductStatus']);
 
           Route::post('/plans/store-or-update', [PlanController::class, 'storeOrUpdatePlan']);
 
@@ -257,5 +260,6 @@ Route::prefix('v1')->group(function () {
         Route::post('/notifications/mark-read/{id}', [ProgramsSetController::class, 'markRead']);
 
         Route::get('supplyer-dashboard',[SupplyerController::class,'index']);
+        Route::get('all-users-for-supplyer', [SupplyerController::class, 'userIndex']);
     });
 });
