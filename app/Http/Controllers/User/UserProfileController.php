@@ -56,6 +56,12 @@ class UserProfileController extends Controller
             'strength_training_week' => 'nullable|string',
             'workout_week' => 'nullable|string',
             'is_athletic' => 'nullable|boolean',
+            'notes' => 'nullable|string',
+            'curvy_fit' => 'nullable|boolean',
+            'muscular' => 'nullable|boolean',
+            'lean' => 'nullable|boolean',
+            'toned' => 'nullable|boolean',
+            ''
         ]);
 
         $user = User::find($validated['user_id']);
