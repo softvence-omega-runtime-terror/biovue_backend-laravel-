@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\Schedule;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -603,11 +604,17 @@ class UserController extends Controller
     {
         try {
             $coachId = auth()->id();
+            
+            $todaysCheckinsCount = Schedule::where('trainer_id', $coachId)
+                ->whereDate('schedule_date', now()->today())
+                ->count();
+
             $totalSignups = User::where('user_type', 'individual')->orWhere('user_type', 'professional')->count();
+            
             $clientsQuery = User::where('user_type', 'individual')
                 ->whereHas('targetGoals', function($q) use ($coachId) {
                     $q->where('id', $coachId);
-                }) ;
+                });
 
             $activeCount = $totalSignups;
             
@@ -640,7 +647,8 @@ class UserController extends Controller
                     'active_clients'    => ['value' => $activeCount, 'label' => 'Currently coached'],
                     'needing_attention' => ['value' => $attentionCount, 'label' => 'Off-track or low activity'],
                     'pending_messages'  => ['value' => 3, 'label' => 'Unread client messages'], 
-                    'todays_checkins'   => ['value' => 7, 'label' => 'Scheduled Today'] 
+                    
+                    'todays_checkins'   => ['value' => $todaysCheckinsCount, 'label' => 'Scheduled Today'] 
                 ],
                 'client_table' => $clientsTable,
                 'today_actions' => [
