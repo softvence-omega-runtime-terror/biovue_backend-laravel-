@@ -42,6 +42,7 @@ use App\Http\Controllers\AI\ProjectionLifestyleController;
 use App\Http\Controllers\AI\ProjectionFutureGoalController;
 use App\Http\Controllers\AI\RecommendationController;
 use App\Http\Controllers\AI\UserHabitUpdateController;
+use App\Http\Controllers\AI\UserNutritionCalculateController;
 
 Route::prefix('v1')->group(function () {
 
@@ -89,8 +90,13 @@ Route::prefix('v1')->group(function () {
     // ----------------------------
     Route::middleware('auth:sanctum')->group(function () {
 
+
         //AI INsight part
         Route::post('/change-password', [ForgotPasswordController::class, 'changePassword']);
+        
+
+        Route::post('/nutrition/calculate', [UserNutritionCalculateController::class, 'store']);
+        Route::get('/nutrition/show', [UserNutritionCalculateController::class, 'show']);
 
         Route::post('/habits/update', [UserHabitUpdateController::class, 'update']);
         Route::get('/habits/{user_id}', [UserHabitUpdateController::class, 'show']);
