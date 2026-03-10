@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Supplyer;
 
 use App\Http\Controllers\Controller;
+use App\Models\Product;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class SupplyerController extends Controller
@@ -12,13 +14,14 @@ class SupplyerController extends Controller
         try {
             $user = auth()->user();
 
-            $totalProducts = \App\Models\Product::where('supplier_id', $user->id)->count();
-            $activeProducts = \App\Models\Product::where('supplier_id', $user->id)
+            $totalProducts = Product::where('supplier_id', $user->id)->count();
+            $activeProducts = Product::where('supplier_id', $user->id)
                                 ->where('status', 'published')->count();
-            $draftProducts = \App\Models\Product::where('supplier_id', $user->id)
+            $draftProducts = Product::where('supplier_id', $user->id)
                                 ->where('status', 'draft')->count();
             
-            $products = \App\Models\Product::where('supplier_id', $user->id)
+            $products = Product::where('supplier_id', $user->id)
+                ->whereIn('status', ['published'])
                 ->orderBy('created_at', 'desc')
                 ->get()
                 ->map(function ($product) {
@@ -47,4 +50,33 @@ class SupplyerController extends Controller
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
+
+    public function userIndex()
+    {
+        try {
+            $users = User::orderBy('created_at', 'desc')
+                        ->get()
+                        ->map(function ($user) {
+                            return [
+                                'id' => $user->id,
+                                'name' => $user->name,
+                                'email' => $user->email,
+                                'user_type' => ucfirst($user->user_type),
+                                'profession_type' => $user->profession_type ? ucfirst(str_replace('_', ' ', $user->profession_type)) : null,
+                                'profile_image' => $user->image ? asset('storage/' . $user->image) : null,
+                                'joined_at' => $user->created_at->format('Y-m-d'),
+                            ];
+                        });
+
+            return response()->json([
+                'success' => true,
+                'data' => $users
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+
 }
