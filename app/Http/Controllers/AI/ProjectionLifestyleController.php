@@ -14,7 +14,7 @@ class ProjectionLifestyleController extends Controller
     {
         // Validate input
         $request->validate([
-            'image' => 'required|file|mimes:jpg,jpeg,png,avif,webp|max:2048',
+            'image' => 'required|file|mimes:jpg,jpeg,png,avif,webp|max:5120',
             'duration' => 'nullable|in:6 months,1 year,5 years',
             'resolution' => 'nullable|in:2K,4K',
             'tier' => 'nullable|in:ultra,fast',
@@ -28,7 +28,7 @@ class ProjectionLifestyleController extends Controller
             $imageUrl = asset('storage/' . $imagePath);
 
             // Call external API with a longer timeout
-            $response = Http::timeout(120) // wait up to 120 seconds
+            $response = Http::timeout(300) // wait up to 120 seconds
                 ->withOptions(['verify' => false]) // ignore SSL issues if needed
                 ->attach(
                     'image',
