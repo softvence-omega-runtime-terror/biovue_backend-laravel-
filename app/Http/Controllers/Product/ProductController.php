@@ -22,16 +22,18 @@ class ProductController extends Controller
 
         $validated = $request->validate([
             'name'         => 'required|string|max:255',
-            'description'  => 'nullable|string',
             'category'     => 'required|in:fitness,nutrition,supplements',
             'price'        => 'required|numeric|min:0',
+            'description'  => 'nullable|string',
             'redirect_url' => 'nullable|url',
             'status'       => 'nullable|in:draft,published',
             'image'        => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
+        // Database-e pathanor age image path-ta thik kora
         if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('products', 'public');
+            $path = $request->file('image')->store('products', 'public');
+            $validated['image'] = $path; // validated array update kora
         }
 
         $product = Product::create(array_merge($validated, [
