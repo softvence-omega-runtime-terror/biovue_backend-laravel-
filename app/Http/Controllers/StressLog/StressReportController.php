@@ -10,59 +10,54 @@ use Illuminate\Support\Facades\DB;
 class StressReportController extends Controller
 {
     public function getStressReport(Request $request)
-    {
-        try {
-            $user = $request->user();
-            $today = now()->format('Y-m-d');
-            $sevenDaysAgo = now()->subDays(6)->format('Y-m-d');
+{
+    try {
+        $user = $request->user();
+        
+        $daysCount = (int) $request->query('days', 7); 
+        $startDate = now()->subDays($daysCount - 1)->startOfDay();
+        $endDate = now()->endOfDay();
 
-            $days = collect(range(6, 0))->map(function($i) {
-                return now()->subDays($i)->format('D'); 
-            });
+        $stressLogs = DB::table('stress_logs')
+            ->where('user_id', $user->id)
+            ->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->get()
+            ->keyBy('log_date');
 
-            $stressLogs = DB::table('stress_logs')
-                ->where('user_id', $user->id)
-                ->whereBetween('log_date', [$sevenDaysAgo, $today])
-                ->get()
-                ->keyBy(function($item) {
-                    return Carbon::parse($item->log_date)->format('D');
-                });
+        $chartData = [];
 
-            $chartValues = $days->map(function($day) use ($stressLogs) {
-                return $stressLogs->has($day) ? $stressLogs[$day]->stress_level : 0;
-            });
+        for ($i = 0; $i < $daysCount; $i++) {
+            $currentDate = now()->subDays(($daysCount - 1) - $i)->toDateString();
+            $log = $stressLogs->get($currentDate);
 
-            $avgStress = DB::table('stress_logs')
-                ->where('user_id', $user->id)
-                ->avg('stress_level') ?? 0;
-
-            $logCount = DB::table('stress_logs')
-                ->where('user_id', $user->id)
-                ->whereBetween('log_date', [$sevenDaysAgo, $today])
-                ->count();
-            $consistency = round(($logCount / 7) * 100);
-
-            $streak = $this->calculateStreak($user->id);
-
-            return response()->json([
-                'success' => true,
-                'stress_progress' => [
-                    'labels' => $days,
-                    'values' => $chartValues,
-                ],
-                'stats' => [
-                    'average' => round($avgStress, 1) . '/10 PTS',
-                    'consistency' => $consistency . '%',
-                    'best_streak' => $streak . ' DAYS',
-                    'current_trend' => $avgStress < 3 ? 'Improving' : 'Stable',
-                ],
-                
-            ], 200);
-
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            $chartData[] = [
+                'day' => Carbon::parse($currentDate)->format('D'),
+                'date' => Carbon::parse($currentDate)->format('d M'),
+                'stress_level' => $log ? (int) $log->stress_level : 0,
+                'mood' => $log ? $log->mood : 'neutral'
+            ];
         }
+
+        $avgStress = $stressLogs->avg('stress_level') ?? 0;
+        $logCount = $stressLogs->count();
+        $consistency = round(($logCount / $daysCount) * 100);
+
+        return response()->json([
+            'success' => true,
+            'period' => "Past $daysCount Days",
+            'chart_data' => $chartData, 
+            'stats' => [
+                'average' => round($avgStress, 1) . '/10 PTS',
+                'consistency' => $consistency . '%',
+                'best_streak' => $this->calculateStreak($user->id) . ' DAYS',
+                'current_trend' => $avgStress < 4 ? 'Improving' : 'Stable',
+            ],
+        ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
     }
+}
 
     private function calculateStreak($userId) 
     {

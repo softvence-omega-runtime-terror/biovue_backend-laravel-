@@ -29,11 +29,20 @@ use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Payment\PlanPaymentController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\AIObservemetricsController;
-
 use App\Http\Controllers\Faq\FaqController;
 use App\Http\Controllers\Notification\NotificationController;
 use App\Http\Controllers\Product\ProductController;
 use App\Http\Controllers\Projection\ProjectionController;
+use App\Http\Controllers\AI\InsightController;
+use App\Http\Controllers\AI\FutureInsightController;
+use App\Http\Controllers\User\TrainerController;
+use App\Http\Controllers\Supplyer\SupplyerController;
+use App\Http\Controllers\AI\MealPlanController;
+use App\Http\Controllers\AI\ProjectionLifestyleController;
+use App\Http\Controllers\AI\ProjectionFutureGoalController;
+use App\Http\Controllers\AI\RecommendationController;
+use App\Http\Controllers\AI\UserHabitUpdateController;
+use App\Http\Controllers\AI\UserNutritionCalculateController;
 
 Route::prefix('v1')->group(function () {
 
@@ -81,20 +90,67 @@ Route::prefix('v1')->group(function () {
     // ----------------------------
     Route::middleware('auth:sanctum')->group(function () {
 
+
+        //AI INsight part
+        Route::post('/change-password', [ForgotPasswordController::class, 'changePassword']);
+        
+
+        Route::post('/nutrition/calculate', [UserNutritionCalculateController::class, 'store']);
+        Route::get('/nutrition/show', [UserNutritionCalculateController::class, 'show']);
+
+        Route::post('/habits/update', [UserHabitUpdateController::class, 'update']);
+        Route::get('/habits/{user_id}', [UserHabitUpdateController::class, 'show']);
+
+        Route::post('/insights/fetch', [InsightController::class, 'fetchInsights']);
+        // GET show logged-in user insights
+        Route::get('/insights', [InsightController::class, 'showUserInsights']);
+
+        Route::post('/future-insights/fetch', [FutureInsightController::class, 'fetchFutureInsights']);
+        Route::get('/future-insights', [FutureInsightController::class, 'showUserFutureInsights']);
+        //Nutrition mealcontroller
+
+        Route::post('/meal-generate', [MealPlanController::class, 'generateMealPlan']);
+         Route::get('/meal-plan', [MealPlanController::class, 'showUserMealPlan']);
+
+         //project-lifestyle
+         Route::post('/projection-lifestyle', [ProjectionLifestyleController::class, 'store']);
+         // projection-lifestyle latest
+        Route::get('/projection-lifestyle/latest', [ProjectionLifestyleController::class, 'showLatest']);
+
+        //Projection goal
+        // Store a new future goal projection
+         Route::post('/projection-future-goal', [ProjectionFutureGoalController::class, 'store']);
+
+        // Get the latest projection for the authenticated user
+        Route::get('/projection-future-goal/latest', [ProjectionFutureGoalController::class, 'showLatest']);
+        //Recommendation
+         Route::get('/recommend-professionals', [RecommendationController::class, 'index']);
+         Route::get('/trainer-recommended-users/{trainer_id}', [RecommendationController::class, 'trainerUsers']);
+        Route::get('/nutritionist-recommended-users/{nutritionist_id}', [RecommendationController::class, 'nutritionistUsers']);
+        Route::get('/supplier-recommended-users/{supplier_id}', [RecommendationController::class, 'supplierUsers']);
+
         Route::get('profile', [UserProfileController::class, 'index']);
+
         Route::get('profile/{userId}', [UserProfileController::class, 'showByUserId']);
         Route::post('profile', [UserProfileController::class, 'storeAndUpdate']);
         Route::get('users', [UserController::class, 'index']);
         Route::get('user-reports', [UserController::class, 'getUserReport']);
         Route::get('log-reports', [UserController::class, 'getLogReport']);
-        
+        Route::get('user-overview', [UserController::class, 'userOverviewData']);
+        Route::get('userOverviewChart', [UserController::class, 'userOverviewChart']);    
+        Route::get('trainer-overview', [UserController::class, 'trainerOverview']);
+        Route::post('connect-profession', [UserController::class, 'connectToProfession']);
+        Route::get('connected-professions', [UserController::class, 'getMyConnections']);
 
+        Route::get('professionals-data/{id}', [TrainerController::class, 'indexProfessionals']);
        //AIObser
 
        Route::get('/ai-observemetrics', [AIObservemetricsController::class, 'show']);
        Route::get('/dashboard-metrics', [AIObservemetricsController::class, 'index']);
         //getHealthReport
         Route::get('/health-report', [UserController::class, 'getHealthReport']);
+
+        Route::post('/users/toggle-active/{id}', [UserController::class, 'toggleActiveUser']);
        
 
            //subscription payment
@@ -135,6 +191,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/nutrition-logs/{id}', [NutritionController::class, 'show']);
         Route::delete('/nutrition-logs/{id}', [NutritionController::class, 'destroy']);
         Route::get('/nutrition-report', [NutritionController::class, 'getNutritionReport']);
+
+        Route::get('get-card-data', [UserController::class, 'getDashboardData']);
 
         Route::get('/calendar-schedules', [ScheduleController::class, 'index']);
         Route::post('/schedule-checkin', [ScheduleController::class, 'storeSchedule']);
@@ -200,8 +258,21 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/products', [ProductController::class, 'store']);
         Route::get('/products', [ProductController::class, 'index']);
+        Route::post('/products/{id}', [ProductController::class, 'update']);
+        Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+        Route::post('/products/status/{id}', [ProductController::class, 'updateProductStatus']);
 
           Route::post('/plans/store-or-update', [PlanController::class, 'storeOrUpdatePlan']);
 
+
+
+
+        
+        // Get all unread notifications for logged-in user
+           Route::get('/notifications', [ProgramsSetController::class, 'unread']);
+        Route::post('/notifications/mark-read/{id}', [ProgramsSetController::class, 'markRead']);
+
+        Route::get('supplyer-dashboard',[SupplyerController::class,'index']);
+        Route::get('all-users-for-supplyer', [SupplyerController::class, 'userIndex']);
     });
 });

@@ -11,11 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('connect_to_professions', function (Blueprint $table) {
+        Schema::create('connect_user_proffesions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('profession_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('program_set_id')->constrained('programs_sets')->onDelete('cascade');
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');    
             $table->timestamps();
         });
     }
@@ -25,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('connect_to_professions');
+        Schema::dropIfExists('connect_user_proffesions');
     }
 };

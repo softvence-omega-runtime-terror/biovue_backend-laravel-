@@ -8,6 +8,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Laravel\Sanctum\HasApiTokens;
+use App\Models\AI\Insight;
+
 
 class User extends Authenticatable
 {
@@ -128,6 +130,12 @@ class User extends Authenticatable
         return $this->belongsTo(\App\Models\Plan::class, 'plan_id');
     }
 
+
+        public function insights()
+    {
+        return $this->hasMany(Insight::class);
+    }
+
     public function sendUserNotify($type, $content) 
     {
         $settings = $this->notificationSettings; 
@@ -160,4 +168,15 @@ class User extends Authenticatable
         return $this->hasOne(UserMedicalHistory::class, 'user_id');
     }
 
+    public function myProfessionals()
+    {
+        return $this->belongsToMany(User::class, 'connect_user_proffesions', 'user_id', 'profession_id')
+                    ->withTimestamps();
+    }
+
+    public function myClients()
+    {
+        return $this->belongsToMany(User::class, 'connect_user_proffesions', 'profession_id', 'user_id')
+                    ->withTimestamps();
+    }
 }

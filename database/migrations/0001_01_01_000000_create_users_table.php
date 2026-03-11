@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('password');
             $table->string('otp',5)->nullable();
             $table->timestamp('otp_expire_at')->nullable();
-            $table->boolean('status')->default(true);
+            $table->enum('status', ['active', 'inactive', 'turning_possibility','on_track'])->default('active');
             $table->boolean('terms_accepted')->default(false);
             $table->foreignId('plan_id')->nullable();
             $table->enum('user_type', ['individual', 'professional'])->default('individual');
@@ -28,6 +28,8 @@ return new class extends Migration
                 'nutritionist', 
                 'supplement_supplier'
             ])->nullable();
+            $table->integer('turning_possibility')->default(0);
+            $table->boolean('is_active')->default(true);
             $table->rememberToken();
             $table->timestamps();
         });

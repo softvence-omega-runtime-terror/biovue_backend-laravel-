@@ -22,16 +22,18 @@ class ProductController extends Controller
 
         $validated = $request->validate([
             'name'         => 'required|string|max:255',
-            'description'  => 'nullable|string',
             'category'     => 'required|in:fitness,nutrition,supplements',
             'price'        => 'required|numeric|min:0',
+            'description'  => 'nullable|string',
             'redirect_url' => 'nullable|url',
             'status'       => 'nullable|in:draft,published',
             'image'        => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
+        // Database-e pathanor age image path-ta thik kora
         if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('products', 'public');
+            $path = $request->file('image')->store('products', 'public');
+            $validated['image'] = $path; // validated array update kora
         }
 
         $product = Product::create(array_merge($validated, [
@@ -60,4 +62,122 @@ class ProductController extends Controller
             'data'    => $products
         ]);
     }
+
+    public function updateProductStatus(Request $request, $id)
+    {
+        try {
+            $product = Product::where('supplier_id', auth()->id())
+                        ->findOrFail($id);
+
+            $newStatus = strtolower($request->status); 
+
+            if (!in_array($newStatus, ['draft', 'published'])) {
+                return response()->json([
+                    'success' => false, 
+                    'message' => 'Invalid status. Please use "draft" or "published".',
+                    'received_value' => $request->status
+                ], 400);
+            }
+
+            $product->update([
+                'status' => $newStatus
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Product status successfully updated to " . ucfirst($newStatus),
+                'data' => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'current_status' => $product->status
+                ]
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false, 
+                'error' => 'Product not found or you do not have permission to edit this.'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false, 
+                'error' => 'Something went wrong: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function update(Request $request, $id)
+    {
+        try {
+            $product = Product::where('supplier_id', auth()->id())
+                        ->findOrFail($id);
+
+            $validated = $request->validate([
+                'name'         => 'sometimes|required|string|max:255',
+                'description'  => 'nullable|string',
+                'category'     => 'sometimes|required|in:fitness,nutrition,supplements',
+                'price'        => 'sometimes|required|numeric|min:0',
+                'redirect_url' => 'nullable|url',
+                'status'       => 'nullable|in:draft,published',
+                'image'        => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            ]);
+
+            if ($request->hasFile('image')) {
+                if ($product->image) {
+                    Storage::disk('public')->delete($product->image);
+                }
+                $validated['image'] = $request->file('image')->store('products', 'public');
+            }
+
+            $product->update($validated);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product updated successfully',
+                'data'    => $product
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false, 
+                'error' => 'Product not found or you do not have permission to edit this.'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false, 
+                'error' => 'Something went wrong: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function destroy($id)
+    {
+        try {
+            $product = Product::where('supplier_id', auth()->id())
+                        ->findOrFail($id);
+
+            if ($product->image) {
+                Storage::disk('public')->delete($product->image);
+            }
+
+            $product->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product deleted successfully'
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false, 
+                'error' => 'Product not found or you do not have permission to delete this.'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false, 
+                'error' => 'Something went wrong: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 }
