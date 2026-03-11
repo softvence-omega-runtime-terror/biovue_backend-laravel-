@@ -703,38 +703,36 @@ class UserController extends Controller
     }
 
     public function getMyConnections()
-{
-    try {
-        $user = auth()->user(); 
+    {
+        try {
+            $user = auth()->user(); 
 
-        // আইডি ২ এর জন্য এই কন্ডিশনটি সত্য হবে কারণ তার টাইপ 'professional'
-        if ($user->user_type === 'professional' || $user->user_type === 'trainer' || $user->user_type === 'coach') {
-            
-            // প্রফেশনাল (২) তার ক্লায়েন্টদের (৩) খুঁজছেন
-            $connections = $user->belongsToMany(\App\Models\User::class, 'connect_user_proffesions', 'profession_id', 'user_id')
-                                ->get(['users.id', 'users.name', 'users.email']); 
-            $message = "Your connected clients";
-        } 
-        else {
-            // ক্লায়েন্ট (৩) তার প্রফেশনালকে (২) খুঁজছেন
-            $connections = $user->belongsToMany(\App\Models\User::class, 'connect_user_proffesions', 'user_id', 'profession_id')
-                                ->get(['users.id', 'users.name', 'users.email']); 
-            $message = "Professionals you are following";
+            if ($user->user_type === 'professional' || $user->user_type === 'trainer' || $user->user_type === 'coach') {
+                
+                $connections = $user->belongsToMany(User::class, 'connect_user_proffesions', 'profession_id', 'user_id')
+                                    ->get(['users.id', 'users.name', 'users.email']); 
+                $message = "Your connected clients";
+            } 
+            else {
+                $connections = $user->belongsToMany(User::class, 'connect_user_proffesions', 'user_id', 'profession_id')
+                                    ->get(['users.id', 'users.name', 'users.email']); 
+                $message = "Professionals you are following";
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'current_user' => [
+                    'id' => $user->id,
+                    'type' => $user->user_type
+                ],
+                'count' => $connections->count(),
+                'data' => $connections
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'current_user' => [
-                'id' => $user->id,
-                'type' => $user->user_type
-            ],
-            'count' => $connections->count(),
-            'data' => $connections
-        ]);
-
-    } catch (\Exception $e) {
-        return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
     }
 }
-}
+
