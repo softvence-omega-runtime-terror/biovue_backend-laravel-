@@ -46,6 +46,7 @@ class LoginController extends Controller
             ], 403);
         }
 
+        $profileStatus = $user->profile()->exists() ? 'Your profile is complete.' : 'Your profile is incomplete. Please complete your profile to access all features.';
         // ✅ Generate token
         $token = $user->createToken('auth_token_' . $user->id)->plainTextToken;
 
@@ -64,7 +65,7 @@ class LoginController extends Controller
                      'user_type' => $user->user_type ?? null,          // <-- added
                     'profession_type' => $user->profession_type ?? null, // <-- added
                    
-                    
+                    'is_profile_completed' => $profileStatus,
                     
                 ],
                

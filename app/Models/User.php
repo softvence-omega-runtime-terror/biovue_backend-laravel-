@@ -184,4 +184,9 @@ class User extends Authenticatable
     {
         return $this->myProfessionals();
     }
+
+    public function projections() 
+    {
+        return $this->hasMany(Projection::class, 'user_id');
+    }
 }
