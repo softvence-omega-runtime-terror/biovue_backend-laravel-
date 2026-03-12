@@ -682,25 +682,42 @@ class UserController extends Controller
             $user = auth()->user();
             $professionId = $request->profession_id;
 
+            // ২. নিজেকে কানেক্ট করা রোধ করা
             if ($user->id == $professionId) {
                 return response()->json(['success' => false, 'message' => "You can't connect to yourself"], 400);
             }
 
-            $user->connections()->syncWithoutDetaching([$professionId]);
+            // ৩. কানেকশন তৈরি (ডুপ্লিকেট হবে না)
+            $user->myProfessionals()->syncWithoutDetaching([$professionId]);
+
+            // ৪. কানেক্টেড ইউজারের তথ্য তুলে আনা
+            $connectedUser = \App\Models\User::with('profile')->find($professionId);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Successfully connected to the professional',
                 'data' => [
-                    'user_id' => $user->id,
-                    'connected_to' => $professionId
+                    'connection_details' => [
+                        'connected_at' => now()->format('Y-m-d H:i:s'),
+                        'status'       => 'active'
+                    ],
+                    'professional_info' => [ // এখানে ইউজারের ফুল ইনফরমেশন
+                        'id'            => $connectedUser->id,
+                        'name'          => $connectedUser->name,
+                        'email'         => $connectedUser->email,
+                        'user_type'     => $connectedUser->user_type,
+                        'bio'           => $connectedUser->profile?->bio ?? null,
+                        'profile_image' => $connectedUser->profile?->image 
+                                        ? asset('storage/' . $connectedUser->profile->image) 
+                                        : null,
+                    ]
                 ]
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
-    }
+    }   
 
     public function getMyConnections()
     {

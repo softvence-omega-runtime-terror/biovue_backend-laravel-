@@ -143,6 +143,7 @@ Route::prefix('v1')->group(function () {
         Route::get('connected-professions', [UserController::class, 'getMyConnections']);
 
         Route::get('professionals-data/{id}', [TrainerController::class, 'indexProfessionals']);
+        Route::get('professional-client-card', [TrainerController::class, 'professionalClientCard']);   
        //AIObser
 
        Route::get('/ai-observemetrics', [AIObservemetricsController::class, 'show']);
