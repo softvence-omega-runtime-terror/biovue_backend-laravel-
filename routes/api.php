@@ -124,7 +124,7 @@ Route::prefix('v1')->group(function () {
         // Get the latest projection for the authenticated user
         Route::get('/projection-future-goal/latest', [ProjectionFutureGoalController::class, 'showLatest']);
         //Recommendation
-         Route::get('/recommend-professionals', [RecommendationController::class, 'index']);
+        Route::get('recommend/professionals/{user_id}', [RecommendationController::class, 'index']);
          Route::get('/trainer-recommended-users/{trainer_id}', [RecommendationController::class, 'trainerUsers']);
         Route::get('/nutritionist-recommended-users/{nutritionist_id}', [RecommendationController::class, 'nutritionistUsers']);
         Route::get('/supplier-recommended-users/{supplier_id}', [RecommendationController::class, 'supplierUsers']);
