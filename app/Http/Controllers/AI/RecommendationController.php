@@ -45,38 +45,36 @@ class RecommendationController extends Controller
 
 
     /**
-     * Get user suggestions for a trainer
-     */
-    public function trainerUsers($trainer_id)
-    {
-        try {
+ * Get user suggestions for a trainer
+ */
+public function trainerUsers($trainer_id)
+{
+    try {
 
-            $response = Http::timeout(120)
-                ->withOptions(['verify' => false])
-                ->get("https://biovue-ai.onrender.com/api/v1/recommend/users/trainer/{$trainer_id}");
+        $response = Http::timeout(120)
+            ->withoutVerifying() // SSL verify ignore
+            ->get("https://biovue-ai.onrender.com/api/v1/recommend/users/trainer/{$trainer_id}");
 
-            if (!$response->successful()) {
-                return response()->json([
-                    'message' => 'Trainer user recommendation API failed',
-                    'error' => $response->body()
-                ], 500);
-            }
-
+        if ($response->failed()) {
             return response()->json([
-                'message' => 'Trainer user suggestions fetched successfully',
-                'data' => $response->json()
-            ]);
-
-        } catch (\Exception $e) {
-
-            return response()->json([
-                'message' => 'Something went wrong',
-                'error' => $e->getMessage()
+                'message' => 'Trainer recommendation API failed',
+                'error' => $response->body()
             ], 500);
-
         }
-    }
 
+        return response()->json([
+            'message' => 'Trainer user suggestions retrieved successfully',
+            'data' => $response->json()
+        ], 200);
+
+    } catch (\Exception $e) {
+
+        return response()->json([
+            'message' => 'Something went wrong',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 
 
 
