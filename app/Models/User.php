@@ -179,4 +179,14 @@ class User extends Authenticatable
         return $this->belongsToMany(User::class, 'connect_user_proffesions', 'profession_id', 'user_id')
                     ->withTimestamps();
     }
+
+    public function connections()
+    {
+        return $this->myProfessionals();
+    }
+
+    public function projections() 
+    {
+        return $this->hasMany(Projection::class, 'user_id');
+    }
 }

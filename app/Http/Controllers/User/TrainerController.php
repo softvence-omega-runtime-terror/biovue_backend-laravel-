@@ -44,4 +44,77 @@ class TrainerController extends Controller
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
+
+   public function professionalClientCard()
+    {
+        try {
+            $user = auth()->user();
+            $userId = $user->id;
+
+            $profile = $user->profile; 
+            $primaryGoalTitle = "General Fitness";
+            $programDuration = 0;
+
+            if ($profile) {
+                $goalKeys = ['is_athletic' => 'Athletic', 'toned' => 'Toned', 'lean' => 'Lean', 'muscular' => 'Muscular', 'curvy_fit' => 'Curvy Fit'];
+                foreach ($goalKeys as $key => $label) {
+                    if ($profile->$key) { $primaryGoalTitle = $label; break; }
+                }
+            }
+
+            $targetGoal = \App\Models\TargetGoal::where('user_id', $userId)->where('is_active', true)->first();
+            if ($targetGoal && $targetGoal->start_date && $targetGoal->end_date) {
+                $programDuration = \Carbon\Carbon::parse($targetGoal->start_date)->diffInWeeks($targetGoal->end_date);
+            }
+
+            $userSession = \DB::table('sessions')->where('user_id', $userId)->orderBy('last_activity', 'desc')->first();
+            
+            $lastActiveTime = "No activity";
+            if ($userSession) {
+                $lastActiveTime = \Carbon\Carbon::createFromTimestamp($userSession->last_activity)->diffForHumans();
+            }
+
+            $consistencyScore = 0;
+            if ($targetGoal && $targetGoal->daily_step_goal > 0) {
+                $avgSteps = \App\Models\ActivityLog::where('user_id', $userId)->avg('daily_steps');
+                if ($avgSteps) {
+                    $consistencyScore = round(($avgSteps / $targetGoal->daily_step_goal) * 100);
+                }
+            }
+            $trendStatus = ($user->status == 'on_track') ? "Improving" : "Struggling";
+
+            $projectionsCount = \App\Models\Projection::where('user_id', $userId)
+                                ->whereMonth('created_at', now()->month)->count();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'primary_goal' => [
+                        'title' => $primaryGoalTitle,
+                        'subtitle' => "Program duration {$programDuration} weeks"
+                    ],
+                    'current_trend' => [
+                        'status' => $trendStatus,
+                        'meta' => 'Based on your current track status'
+                    ],
+                    'last_activity' => [
+                        'time' => $lastActiveTime == "No activity" ? $lastActiveTime : "Logged " . $lastActiveTime,
+                        'meta' => "Status: " . ucfirst($user->status)
+                    ],
+                    'consistency_score' => [
+                        'score' => min($consistencyScore, 100) . '%',
+                        'meta' => 'Habits adherence (Average)'
+                    ],
+                    'projection_usage' => [
+                        'used' => "{$projectionsCount}/10",
+                        //'reset_days' => "Next reset: " . now()->endOfMonth()->diffInDays(now()) . " days"
+                        'reset_days' => "Next reset: 18 days"
+                    ]
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
 }

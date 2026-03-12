@@ -61,7 +61,6 @@ class UserProfileController extends Controller
             'muscular' => 'nullable|boolean',
             'lean' => 'nullable|boolean',
             'toned' => 'nullable|boolean',
-            ''
         ]);
 
         $user = User::find($validated['user_id']);
