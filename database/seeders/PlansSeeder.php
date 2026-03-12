@@ -10,84 +10,87 @@ class PlansSeeder extends Seeder
 {
     public function run(): void
     {
-        // Admin user fetch (safe)
         $admin = User::where('email', 'admin@example.com')->first();
 
         if (!$admin) {
-            return; // admin na thakle skip
+            return;
         }
-
-        $userId = $admin->id;
 
         $plans = [
 
             // ================= INDIVIDUAL PLANS =================
+
             [
                 'name' => 'Free Trial',
                 'plan_type' => 'individual',
-                'user_id' => $userId,
+                'user_id' => $admin->id,
                 'billing_cycle' => 'days',
                 'duration' => 7,
                 'price' => 0,
                 'member_limit' => null,
                 'status' => true,
                 'features' => [
-                    'BetaCore AI core projections',
-                    'Limited tracking',
-                    'Limited insights',
-                    'Limited projections',
-                    'Limited reports',
-                    'No customer support',
-                    'No business tools',
-                    'Assessment consult & 3 free reports'
+                    'Upload 1 body photo',
+                    '1 AI future projection (1-year horizon)',
+                    'Personal wellness dashboard',
+                    'Basic body stats & trends',
+                    'AI improvement suggestions',
+                    'Health indicators',
+                    'Recommended coaches & clinics',
+                    'Achievement badges & progress reports'
                 ],
             ],
+
             [
                 'name' => 'Plus',
                 'plan_type' => 'individual',
-                'user_id' => $userId,
+                'user_id' => $admin->id,
                 'billing_cycle' => 'monthly',
                 'duration' => null,
                 'price' => 29,
                 'member_limit' => null,
                 'status' => true,
                 'features' => [
-                    'Full AI & BetaCore AI projections',
+                    'Up to 2 AI body projections',
+                    'AI-generated health suggestions (Limited)',
+                    'Recommended Business',
+                    'Achievement badges',
                     'Progress tracking',
-                    'Insights',
-                    'Projections',
-                    'Reports',
-                    'Assessment business tools',
-                    'Customer support',
-                    'Assessment consult & 5 free reports'
+                    'X% improved vs baseline',
+                    'Recalculated after every photo',
+                    'Standard Support Services'
                 ],
             ],
+
             [
                 'name' => 'Premium',
                 'plan_type' => 'individual',
-                'user_id' => $userId,
+                'user_id' => $admin->id,
                 'billing_cycle' => 'monthly',
                 'duration' => null,
                 'price' => 35,
                 'member_limit' => null,
                 'status' => true,
                 'features' => [
-                    'Everything in Plus',
-                    'Advanced tracking',
-                    'Advanced insights',
-                    'Advanced projections',
-                    'Advanced reports',
-                    'Assessment consult & 8 free reports'
+                    'EVERYTHING IN PLUS',
+                    'Up to 4 AI projections',
+                    'External fitness tracker sync',
+                    'Downloadable progress reports',
+                    'Historical trend vs AI projections',
+                    'Priority Email support',
+                    'Full access AI-generated health suggestions',
+                    'Future Health insights (5 year projection)'
                 ],
             ],
 
             // ================= PROFESSIONAL PLANS =================
+
             [
                 'name' => 'Tier 1 Professional',
                 'plan_type' => 'professional',
-                'user_id' => $userId,
+                'user_id' => $admin->id,
                 'billing_cycle' => 'monthly',
-                'duration' => 7,
+                'duration' => null,
                 'price' => 250,
                 'member_limit' => 8,
                 'status' => true,
@@ -102,12 +105,13 @@ class PlansSeeder extends Seeder
                     'Limited customization'
                 ],
             ],
+
             [
                 'name' => 'Tier 2 Professional',
                 'plan_type' => 'professional',
-                'user_id' => $userId,
+                'user_id' => $admin->id,
                 'billing_cycle' => 'monthly',
-                'duration' => 7,
+                'duration' => null,
                 'price' => 750,
                 'member_limit' => 25,
                 'status' => true,
@@ -122,12 +126,13 @@ class PlansSeeder extends Seeder
                     'Custom onboarding (via email)'
                 ],
             ],
+
             [
                 'name' => 'Tier 3 Professional',
                 'plan_type' => 'professional',
-                'user_id' => $userId,
+                'user_id' => $admin->id,
                 'billing_cycle' => 'monthly',
-                'duration' => 7,
+                'duration' => null,
                 'price' => 3500,
                 'member_limit' => 150,
                 'status' => true,
@@ -141,10 +146,11 @@ class PlansSeeder extends Seeder
                     'Quarterly business reviews'
                 ],
             ],
+
             [
                 'name' => 'Enterprise',
                 'plan_type' => 'professional',
-                'user_id' => $userId,
+                'user_id' => $admin->id,
                 'billing_cycle' => 'custom',
                 'duration' => null,
                 'price' => 0,
@@ -165,17 +171,15 @@ class PlansSeeder extends Seeder
         ];
 
         foreach ($plans as $plan) {
+
             Plan::updateOrCreate(
                 [
                     'name' => $plan['name'],
-                    'plan_type' => $plan['plan_type'],
+                    'plan_type' => $plan['plan_type']
                 ],
                 $plan
             );
+
         }
     }
-
-
-
-
 }
