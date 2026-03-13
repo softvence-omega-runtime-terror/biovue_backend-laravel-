@@ -137,7 +137,9 @@ Route::prefix('v1')->group(function () {
         Route::get('user-reports', [UserController::class, 'getUserReport']);
         Route::get('log-reports', [UserController::class, 'getLogReport']);
         Route::get('user-overview', [UserController::class, 'userOverviewData']);
-        Route::get('userOverviewChart', [UserController::class, 'userOverviewChart']);    
+        Route::get('user-overview-chart', [UserController::class, 'userOverviewChart']);
+        Route::get('/user-overview-chart/{userId?}', [UserController::class, 'userOverviewChart']);
+        Route::get('user-overview-filter', [UserController::class, 'processChartData']);    
         Route::get('trainer-overview', [UserController::class, 'trainerOverview']);
         Route::post('connect-profession', [UserController::class, 'connectToProfession']);
         Route::get('connected-professions', [UserController::class, 'getMyConnections']);
@@ -202,6 +204,7 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/goals', [TargetGoalController::class, 'storeOrUpdate']);
         Route::get('/goals', [TargetGoalController::class, 'getGoal']);
+        Route::post('/goals/{id}', [TargetGoalController::class, 'update']);
 
         Route::post('/adjust-program', [AdjustProgramController::class, 'storeOrUpdate']);
         Route::get('/adjust-program/{id}', [AdjustProgramController::class, 'show']);

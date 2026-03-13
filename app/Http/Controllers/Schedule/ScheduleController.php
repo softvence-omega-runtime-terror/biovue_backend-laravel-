@@ -14,47 +14,67 @@ use App\Notifications\ReminderNotification;
 
 class ScheduleController extends Controller
 {
-   public function index(Request $request)
-{
-    try {
+    public function index(Request $request)
+    {
         $date = $request->query('date', Carbon::today()->toDateString());
-
-        $schedules = Schedule::with([
-            'client' => function ($query) {
-                $query->select('id', 'name')
-                      ->with(['profile' => function ($q) {
-                          $q->select('user_id', 'image');
-                      }]);
-            }
-        ])
-        ->where('trainer_id', auth()->id()) // recommended for security
+        
+        $schedules = Schedule::with(['client' => function($query) {
+            $query->select('id', 'name')->with(['profile' => function($q) {
+                $q->select('user_id', 'image'); 
+            }]);
+        }])
         ->whereBetween('schedule_date', [
-            Carbon::parse($date)->startOfWeek(),
+            Carbon::parse($date)->startOfWeek(), 
             Carbon::parse($date)->endOfWeek()
         ])
         ->get();
 
-        if ($schedules->isEmpty()) {
-            return response()->json([
-                'status' => 'success',
-                'message' => 'No schedules found for this week.',
-                'data' => []
-            ], 200);
-        }
-
         return response()->json([
             'status' => 'success',
-            'message' => 'Schedules fetched successfully.',
             'data' => $schedules
-        ], 200);
-
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Failed to fetch schedules.'
-        ], 500);
+        ]);
     }
-}
+    // public function index(Request $request)
+    // {
+    //     try {
+    //         $date = $request->query('date', Carbon::today()->toDateString());
+
+    //         $schedules = Schedule::with([
+    //             'client' => function ($query) {
+    //                 $query->select('id', 'name')
+    //                       ->with(['profile' => function ($q) {
+    //                           $q->select('user_id', 'image');
+    //                       }]);
+    //             }
+    //         ])
+    //         ->where('trainer_id', auth()->id()) // recommended for security
+    //         ->whereBetween('schedule_date', [
+    //             Carbon::parse($date)->startOfWeek(),
+    //             Carbon::parse($date)->endOfWeek()
+    //         ])
+    //         ->get();
+
+    //         if ($schedules->isEmpty()) {
+    //             return response()->json([
+    //                 'status' => 'success',
+    //                 'message' => 'No schedules found for this week.',
+    //                 'data' => []
+    //             ], 200);
+    //         }
+
+    //         return response()->json([
+    //             'status' => 'success',
+    //             'message' => 'Schedules fetched successfully.',
+    //             'data' => $schedules
+    //         ], 200);
+
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Failed to fetch schedules.'
+    //         ], 500);
+    //     }
+    // }
 
     public function storeSchedule(Request $request)
     {
