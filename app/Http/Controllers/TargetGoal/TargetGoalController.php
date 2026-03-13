@@ -60,4 +60,42 @@ class TargetGoalController extends Controller
             'data'    => $goal
         ]);
     }
+
+    public function update(Request $request, $id)
+    {
+        $goal = TargetGoal::find($id);
+
+        if (!$goal) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Goal not found'
+            ], 404);
+        }
+        $loggedInUser = Auth::user();
+        
+        if ($goal->user_id == $loggedInUser->id || $loggedInUser->user_type === 'trainer') {
+            
+            $validated = $request->validate([
+                'target_weight'       => 'nullable|numeric|between:0,999.99',
+                'weekly_workout_goal' => 'nullable|integer|min:1|max:7',
+                'daily_step_goal'     => 'nullable|integer|min:0',
+                'sleep_target'        => 'nullable|numeric|between:0,24',
+                'start_date'          => 'nullable|date',
+                'end_date'            => 'nullable|date|after_or_equal:start_date',
+            ]);
+
+            $goal->update($validated);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Target goal updated successfully',
+                'data'    => $goal
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Unauthorized: You cannot update this goal.'
+        ], 403);
+    }
 }

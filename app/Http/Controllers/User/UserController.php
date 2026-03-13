@@ -261,7 +261,7 @@ class UserController extends Controller
                 'sleep_hours' => [
                     'current' => round($activityLogs->avg('sleep_hours'), 1) . " Hrs",
                     
-                    'coach_plan' => $user->adjustPrograms->sleep_target_range ?? '7-8 Hrs'
+                    'coach_plan' => $user->adjustProgram->sleep_target_range ?? '7-8 Hrs'
                 ]
             ]
         ]);
@@ -408,27 +408,32 @@ class UserController extends Controller
         $startDate = now()->subDays($days - 1)->toDateString();
         $endDate = now()->toDateString();
 
-        $user = User::with(['profile', 'targetGoals', 'adjustProgram'])->find($id);
+        $user = User::with(['profile', 'targetGoals' => function($q) {
+            $q->where('is_active', true);
+        }, 'adjustProgram'])->find($id);
+
         if (!$user) return response()->json(['message' => 'User not found'], 404);
 
         $activityLogs = DB::table('activity_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
-        $hydrationLogs = DB::table('hydration_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
-        $sleepLogs = DB::table('sleep_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
-        $stressLogs = DB::table('stress_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
         $nutritionLogs = DB::table('nutrition_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
-
+        $sleepLogs = DB::table('sleep_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
+        
+        $target = $user->targetGoals;
         $latestWeight = $activityLogs->last()->weight ?? ($user->profile->weight ?? 0);
-        $targetWeight = $user->targetGoals->target_weight ?? 0;
+        $targetWeight = $target->target_weight ?? 0;
         
         $bmiScore = 0;
-        if ($user->profile->height > 0 && $latestWeight > 0) {
+        if (($user->profile->height ?? 0) > 0 && $latestWeight > 0) {
             $heightInMeters = $user->profile->height / 100;
             $weightInKg = $latestWeight * 0.453592;
             $bmiScore = round($weightInKg / ($heightInMeters * $heightInMeters), 1);
         }
 
-        $loggedCount = $activityLogs->count() + $nutritionLogs->count() + $stressLogs->count() + $hydrationLogs->count() + $sleepLogs->count();
-        $wellnessScore = min(round(($loggedCount / ($days * 3)) * 100), 100);
+        $totalPossibleLogs = $days * 5;
+        $actualLogs = $activityLogs->count() + $nutritionLogs->count() + $sleepLogs->count();
+        $wellnessScore = $totalPossibleLogs > 0 ? min(round(($actualLogs / $totalPossibleLogs) * 100), 100) : 0;
+
+        $nutritionScore = round($nutritionLogs->avg('quality_score') ?? 0); 
 
         return response()->json([
             'success' => true,
@@ -437,56 +442,57 @@ class UserController extends Controller
                     'wellness_score' => [
                         'score' => $wellnessScore,
                         'max' => 100,
+                        'trend' => $wellnessScore >= 70 ? "+4 vs last week" : "-2 vs last week", 
                         'footer' => "Coach-tracked"
                     ],
                     'days_active' => [
                         'current' => $activityLogs->unique('log_date')->count(),
                         'total' => $days,
-                        'status' => "Based on your activity logs"
+                        'status' => $activityLogs->count() >= ($target->weekly_workout_goal ?? 5) ? "On track" : "Behind schedule",
+                        'footer' => "Based on coach plan"
                     ],
                     'data_logged' => [
-                        'count' => $loggedCount,
-                        'label' => "Total entries in $days days"
+                        'count' => $actualLogs,
+                        'label' => "Entries this week"
                     ]
                 ],
 
                 'health_overview' => [
                     'weight' => [
-                        'current' => $latestWeight,
-                        'diff' => round($latestWeight - $targetWeight, 1),
-                        'coach_target' => $targetWeight . " lbs",
-                        'insight' => $user->targetGoals->notes ?? "Target updated by coach"
+                        'current' => $latestWeight . " lbs",
+                        'diff' => ($latestWeight - $targetWeight > 0 ? "+" : "") . round($latestWeight - $targetWeight, 1) . " lbs above ideal",
+                        'coach_target' => "Coach target: " . ($targetWeight ?: 'N/A') . " lbs",
+                        'insight' => $latestWeight > $targetWeight ? "Gradual fat loss prioritized." : "Maintaining healthy weight."
                     ],
                     'bmi' => [
                         'score' => $bmiScore,
-                        'status' => $bmiScore > 24.9 ? "Above recommended range" : "Healthy range",
-                        'coach_target' => $user->targetGoals->target_bmi ?? 26.0
+                        'range' => "Healthy range: 18.5 - 24.9",
+                        'status' => $bmiScore > 24.9 ? "Higher than recommended range" : "Within healthy range",
+                        'coach_target' => "Coach target: 26.0" 
                     ],
                     'nutrition' => [
-                        'quality' => round(($nutritionLogs->count() / $days) * 100),
-                        'last_balance' => $nutritionLogs->last()->meal_balance ?? 'N/A',
-                        'coach_note' => $user->adjustPrograms->note ?? "Improve consistency"
+                        'quality' => "$nutritionScore/100",
+                        'status' => $nutritionScore >= 70 ? "Balanced" : "Needs Improvement",
+                        'meta' => $nutritionLogs->last()->description ?? "Meals tracked today",
+                        'coach_note' => $user->adjustProgram->nutrition_note ?? "Improve consistency on weekends"
                     ],
                     'workouts' => [
-                        'count' => $activityLogs->where('daily_steps', '>', 5000)->count(),
-                        'coach_plan' => $user->adjustPrograms->weekly_workouts ?? '3-4 session/week'
+                        'count' => $user->adjustProgram->where('weekly_workouts', 1)->count() . " session", // assuming is_workout exists
+                        'recommendation' => "Recommended " . ($target->weekly_workouts ?? '4-5') . " sessions",
+                        'coach_plan' => "Coach Plan : " . ($target->weekly_workouts ?? '3-4') . " session/week",
+                        'note' => "Volume adjusted for recovery"
                     ],
                     'steps' => [
-                        'avg' => (int) $activityLogs->avg('daily_steps'),
-                        'coach_plan' => ($user->targetGoals->daily_step_goal ?? 0) . " steps"
+                        'avg' => (int) ($activityLogs->avg('daily_steps') ?? 0),
+                        'status' => "Based on current log data",
+                        'coach_plan' => "Coach Plan : " . number_format($target->daily_step_goal ?? 0) . " steps",
+                        'note' => "Increase gradually to avoid fatigue."
                     ],
                     'sleep' => [
-                        'avg' => round($sleepLogs->avg('sleep_hours'), 1),
-                        'coach_plan' => $user->adjustPrograms->sleep_target_range ?? '7-8 Hrs'
+                        'avg' => round($sleepLogs->avg('sleep_hours') ?? 0, 1) . " Hrs",
+                        'status' => "Based on current log data",
+                        'coach_plan' => "Coach Plan : " . ($target->sleep_target ?? '7.5 - 8') . " Hrs"
                     ]
-                ],
-
-                'consistency' => [
-                    'sleep' => $this->formatConsistency('Sleep', $sleepLogs, $days, 7),
-                    'activity' => $this->formatConsistency('Activity', $activityLogs, $days, 6500, 'daily_steps'),
-                    'hydration' => $this->formatConsistency('Hydration', $hydrationLogs, $days, 8, 'water_glasses'),
-                    'nutrition' => $this->formatConsistency('Nutrition', $nutritionLogs, $days, 3, 'protein_servings'),
-                    'stress' => $this->formatConsistency('Stress', $stressLogs, $days, 4, 'stress_level', true)
                 ]
             ]
         ]);
@@ -508,22 +514,259 @@ class UserController extends Controller
         ];
     }
 
-    public function userOverviewChart(Request $request)
+    public function getProgressReport(Request $request, $userId = null)
     {
-        $user = $request->user();
-        $id = $user->id;
+        try {
+            $id = $userId ?: auth()->id();
+            
+            $filter = $request->query('filter', 'weekly'); // default weekly
+            
+            switch ($filter) {
+                case 'monthly':
+                    $days = 30;
+                    $groupBy = 'week';
+                    break;
+                case '3_months':
+                    $days = 90;
+                    $groupBy = 'month';
+                    break;
+                default: // weekly
+                    $days = 7;
+                    $groupBy = 'day';
+                    break;
+            }
+
+            $startDate = now()->subDays($days - 1)->startOfDay();
+            $endDate = now()->endOfDay();
+
+            $activityLogs = \DB::table('activity_logs')
+                ->where('user_id', $id)
+                ->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])
+                ->orderBy('log_date', 'asc')
+                ->get();
+
+            $nutritionLogs = \DB::table('user_nutrition_calculates')
+                ->where('user_id', $id)
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->orderBy('created_at', 'asc')
+                ->get();
+
+            $chartData = $this->processChartData($days, $activityLogs, $nutritionLogs);
+
+            return response()->json([
+                'success' => true,
+                'filter_used' => $filter,
+                'charts' => $chartData
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function processChartData(Request $request, $userId = null)
+    {
+        try {
+            $id = $userId ?: auth()->id();
+            $filter = $request->query('filter', 'weekly'); 
+
+            if ($filter === 'monthly') {
+                $days = 30;
+            } elseif ($filter === '3_months') {
+                $days = 90;
+            } else {
+                $days = 7;
+            }
+
+            $startDate = now()->subDays($days - 1)->toDateString();
+            $endDate = now()->toDateString();
+
+            $activityLogs = \DB::table('activity_logs')
+                ->where('user_id', $id)
+                ->whereBetween('log_date', [$startDate, $endDate])
+                ->get();
+
+            $nutritionLogs = \DB::table('user_nutrition_calculates')
+                ->where('user_id', $id)
+                ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+                ->get();
+
+            $data = $this->calculateChartDetails($days, $activityLogs, $nutritionLogs);
+
+            return response()->json([
+                'success' => true,
+                'filter' => $filter,
+                'data' => $data
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    protected function calculateChartDetails($days, $activityLogs, $nutritionLogs)
+    {
+        $labels = [];
+        $weightData = [];
+        $stepData = [];
+        $sleepData = [];
+        $protein = []; $carbs = []; $fats = [];
+
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $date = now()->subDays($i)->toDateString();
+            
+            $labels[] = ($days <= 7) ? now()->subDays($i)->format('D') : now()->subDays($i)->format('M d');
+
+            $log = $activityLogs->where('log_date', $date)->first();
+            $weightData[] = $log ? (float)$log->weight : null;
+            $stepData[] = $log ? (int)$log->daily_steps : 0;
+            $sleepData[] = $log ? (float)$log->sleep_hours : 0;
+
+            $dayNutri = $nutritionLogs->filter(fn($n) => date('Y-m-d', strtotime($n->created_at)) == $date);
+            $p = $dayNutri->sum('protein_value');
+            $c = $dayNutri->sum('carbs_value');
+            $f = $dayNutri->sum('fat_value');
+            $total = $p + $c + $f;
+
+            $protein[] = $total > 0 ? round(($p / $total) * 100) : 0;
+            $carbs[] = $total > 0 ? round(($c / $total) * 100) : 0;
+            $fats[] = $total > 0 ? round(($f / $total) * 100) : 0;
+        }
+
+        return [
+            'weight' => ['labels' => $labels, 'data' => $weightData, 'total_progress' => $this->getWeightDiff($activityLogs)],
+            'activity' => ['labels' => $labels, 'data' => $stepData],
+            'sleep' => ['labels' => $labels, 'data' => $sleepData],
+            'nutrition' => [
+                'labels' => $labels,
+                'datasets' => [
+                    ['label' => 'Protein', 'data' => $protein, 'color' => '#34A853'],
+                    ['label' => 'Carbs', 'data' => $carbs, 'color' => '#4285F4'],
+                    ['label' => 'Fats', 'data' => $fats, 'color' => '#FBBC05']
+                ]
+            ]
+        ];
+    }
+
+    protected function getWeightDiff($logs) {
+        if ($logs->count() < 2) return "0.0 lbs";
+        $diff = $logs->last()->weight - $logs->first()->weight;
+        return ($diff > 0 ? "+" : "") . round($diff, 1) . " lbs";
+    }
+
+    // public function userOverviewChart(Request $request)
+    // {
+    //     $user = $request->user();
+    //     $id = $user->id;
         
+    //     $daysCount = (int) $request->query('days', 7); 
+    //     $startDate = now()->subDays($daysCount - 1)->startOfDay();
+    //     $endDate = now()->endOfDay();
+
+    //     $userData = \App\Models\User::with(['profile', 'targetGoals', 'adjustProgram'])->find($id);
+
+    //     $activity = DB::table('activity_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+    //     $hydration = DB::table('hydration_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+    //     $sleep = DB::table('sleep_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+    //     $stress = DB::table('stress_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+    //     $nutrition = DB::table('nutrition_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+
+    //     $chartData = [];
+    //     $period = \Carbon\CarbonPeriod::create($startDate, $endDate);
+
+    //     foreach ($period as $date) {
+    //         $formattedDate = $date->toDateString();
+    //         $actLog = $activity->where('log_date', $formattedDate)->first();
+    //         $slpLog = $sleep->where('log_date', $formattedDate)->first();
+    //         $nutLog = $nutrition->where('log_date', $formattedDate)->first();
+
+    //         $chartData[] = [
+    //             'label' => $daysCount <= 7 ? $date->format('D') : $date->format('d M'),
+    //             'weight' => $actLog ? (float)$actLog->weight : null,
+    //             'steps' => $actLog ? (int)$actLog->daily_steps : 0,
+    //             'sleep_hours' => $slpLog ? (float)$slpLog->sleep_hours : 0,
+    //             'nutrition' => [
+    //                 'protein' => $nutLog ? (int)$nutLog->protein_servings : 0,
+    //                 'carbs' => $nutLog ? (int)$nutLog->carb_quality : 0,
+    //                 'fats' => $nutLog ? (int)$nutLog->	fat_sources : 0,
+    //             ]
+    //         ];
+    //     }
+
+    //     $latestWeight = $activity->last()->weight ?? ($userData->profile->weight ?? 0);
+    //     $bmi = 0;
+    //     if ($userData->profile->height > 0 && $latestWeight > 0) {
+    //         $heightM = $userData->profile->height / 100;
+    //         $weightK = $latestWeight * 0.453592; 
+    //         $bmi = round($weightK / ($heightM * $heightM), 1);
+    //     }
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'summary' => [
+    //             'wellness_score' => 72,
+    //             'days_active' => $activity->unique('log_date')->count() . "/$daysCount",
+    //             'entries_count' => $activity->count() + $nutrition->count() + $sleep->count()
+    //         ],
+    //         'health_overview' => [
+    //             'weight' => [
+    //                 'current' => $latestWeight,
+    //                 'target' => $userData->targetGoals->target_weight ?? 0,
+    //                 'note' => $userData->targetGoals->notes ?? "Target updated by coach"
+    //             ],
+    //             'bmi' => [
+    //                 'score' => $bmi,
+    //                 'target' => $userData->targetGoals->target_bmi ?? 26.0,
+    //                 'status' => $bmi > 24.9 ? "Higher than range" : "Healthy"
+    //             ],
+    //             'steps' => [
+    //                 'avg' => (int)$activity->avg('daily_steps'),
+    //                 'target' => $userData->targetGoals->daily_step_goal ?? 6500
+    //             ]
+    //         ],
+    //         'charts' => $chartData, 
+    //         'consistency' => [
+    //             'sleep' => $this->calcConsist('Sleep', $sleep, $daysCount, 7),
+    //             'activity' => $this->calcConsist('Activity', $activity, $daysCount, 6500, 'daily_steps'),
+    //             'hydration' => $this->calcConsist('Hydration', $hydration, $daysCount, 8, 'water_glasses'),
+    //             'nutrition' => $this->calcConsist('Nutrition', $nutrition, $daysCount, 3, 'protein_servings')
+    //         ]
+    //     ]);
+    // }
+
+    public function userOverviewChart(Request $request, $userId = null)
+{
+    try {
+        $loggedInUser = auth()->user();
+        
+        // যদি userId প্যারামিটারে থাকে তবে সেটি ব্যবহার হবে, না থাকলে নিজের ID
+        $targetId = $userId ?: $loggedInUser->id;
+
+        // প্রফেশনাল অন্য কারো ডাটা দেখতে চাইলে কানেকশন চেক
+        if ($targetId != $loggedInUser->id) {
+            $isConnected = DB::table('connect_user_proffesions')
+                ->where('profession_id', $loggedInUser->id)
+                ->where('user_id', $targetId)
+                ->exists();
+
+            if (!$isConnected) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized client access'], 403);
+            }
+        }
+
         $daysCount = (int) $request->query('days', 7); 
         $startDate = now()->subDays($daysCount - 1)->startOfDay();
         $endDate = now()->endOfDay();
 
-        $userData = \App\Models\User::with(['profile', 'targetGoals', 'adjustPrograms'])->find($id);
+        // ইউজার ডাটা এবং রিলেশন লোড
+        $userData = \App\Models\User::with(['profile', 'targetGoals', 'adjustProgram'])->find($targetId);
+        
+        if (!$userData) return response()->json(['success' => false, 'message' => 'User not found'], 404);
 
-        $activity = DB::table('activity_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
-        $hydration = DB::table('hydration_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
-        $sleep = DB::table('sleep_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
-        $stress = DB::table('stress_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
-        $nutrition = DB::table('nutrition_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+        // লগ ফেচিং
+        $activity = DB::table('activity_logs')->where('user_id', $targetId)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+        $sleep = DB::table('sleep_logs')->where('user_id', $targetId)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+        $nutrition = DB::table('nutrition_logs')->where('user_id', $targetId)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
 
         $chartData = [];
         $period = \Carbon\CarbonPeriod::create($startDate, $endDate);
@@ -541,52 +784,36 @@ class UserController extends Controller
                 'sleep_hours' => $slpLog ? (float)$slpLog->sleep_hours : 0,
                 'nutrition' => [
                     'protein' => $nutLog ? (int)$nutLog->protein_servings : 0,
-                    'carbs' => $nutLog ? (int)$nutLog->carbs_servings : 0,
-                    'fats' => $nutLog ? (int)$nutLog->fats_servings : 0,
+                    'carbs' => $nutLog ? (int)$nutLog->carb_quality : 0,
+                    'fats' => $nutLog ? (int)$nutLog->fat_sources : 0,
                 ]
             ];
         }
 
+        // সেফ BMI এবং গোল ডাটা
         $latestWeight = $activity->last()->weight ?? ($userData->profile->weight ?? 0);
-        $bmi = 0;
-        if ($userData->profile->height > 0 && $latestWeight > 0) {
-            $heightM = $userData->profile->height / 100;
-            $weightK = $latestWeight * 0.453592; 
-            $bmi = round($weightK / ($heightM * $heightM), 1);
-        }
+        $targetGoal = $userData->targetGoals?->first();
 
         return response()->json([
             'success' => true,
-            'summary' => [
-                'wellness_score' => 72,
-                'days_active' => $activity->unique('log_date')->count() . "/$daysCount",
-                'entries_count' => $activity->count() + $nutrition->count() + $sleep->count()
-            ],
+            'client_name' => $userData->name,
+            'charts' => $chartData, 
             'health_overview' => [
                 'weight' => [
                     'current' => $latestWeight,
-                    'target' => $userData->targetGoals->target_weight ?? 0,
-                    'note' => $userData->targetGoals->notes ?? "Target updated by coach"
-                ],
-                'bmi' => [
-                    'score' => $bmi,
-                    'target' => $userData->targetGoals->target_bmi ?? 26.0,
-                    'status' => $bmi > 24.9 ? "Higher than range" : "Healthy"
+                    'target' => $targetGoal->target_weight ?? 0
                 ],
                 'steps' => [
                     'avg' => (int)$activity->avg('daily_steps'),
-                    'target' => $userData->targetGoals->daily_step_goal ?? 6500
+                    'target' => $targetGoal->daily_step_goal ?? 6500
                 ]
-            ],
-            'charts' => $chartData, 
-            'consistency' => [
-                'sleep' => $this->calcConsist('Sleep', $sleep, $daysCount, 7),
-                'activity' => $this->calcConsist('Activity', $activity, $daysCount, 6500, 'daily_steps'),
-                'hydration' => $this->calcConsist('Hydration', $hydration, $daysCount, 8, 'water_glasses'),
-                'nutrition' => $this->calcConsist('Nutrition', $nutrition, $daysCount, 3, 'protein_servings')
             ]
         ]);
+
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
     }
+}
 
     private function calcConsist($title, $logs, $days, $target, $col = 'sleep_hours')
     {
@@ -603,63 +830,76 @@ class UserController extends Controller
     public function trainerOverview(Request $request)
     {
         try {
-            $coachId = auth()->id();
-            
-            $todaysCheckinsCount = Schedule::where('trainer_id', $coachId)
+            $coach = auth()->user(); 
+            $coachId = $coach->id;
+
+            $todaysCheckinsCount = \App\Models\Schedule::where('trainer_id', $coachId)
                 ->whereDate('schedule_date', now()->today())
                 ->count();
 
-            $totalSignups = User::where('user_type', 'individual')->orWhere('user_type', 'professional')->count();
-            
-            $clientsQuery = User::where('user_type', 'individual')
-                ->whereHas('targetGoals', function($q) use ($coachId) {
-                    $q->where('id', $coachId);
-                });
+            $activeCount = $coach->myClients()->count();
 
-            $activeCount = $totalSignups;
-            
+            $clientsQuery = $coach->myClients();
+
             $attentionCount = (clone $clientsQuery)->whereDoesntHave('activityLogs', function($q) {
-                $q->where('log_date', '>=', now()->subDays(2));
+                $q->where('log_date', '>=', now()->subDays(2)->toDateString());
             })->count();
 
-            $clientsTable = (clone $clientsQuery)->with(['targetGoals', 'activityLogs' => function($q) {
+            $clientsTable = $clientsQuery->with(['targetGoals', 'activityLogs' => function($q) {
                     $q->latest('log_date');
                 }])
                 ->get()
                 ->map(function($user) {
                     $latestLog = $user->activityLogs->first();
                     $lastLogDate = $latestLog ? \Carbon\Carbon::parse($latestLog->log_date) : null;
-                    $diff = $lastLogDate ? now()->diffInDays($lastLogDate) : null;
+                    
+                    $diff = $lastLogDate ? now()->startOfDay()->diffInDays($lastLogDate->startOfDay()) : null;
+
+                    $goalData = $user->targetGoals?->first();
 
                     return [
+                        'user_id'         => $user->id,
                         'user_name'       => $user->name,
-                        'goal'            => $user->targetGoals->goal_name ?? 'General wellness',
-                        'projection_used' => '3/10',
+                        'goal'            => $goalData ? ($goalData->target_weight . " lbs Target") : 'General wellness',
+                        'projection_used' => '3/10', // Placeholder for actual projection logic
                         'status'          => ($diff === null || $diff >= 3) ? 'Need attention' : 'On track',
                         'activity'        => $this->resolveActivityText($diff, $lastLogDate),
-                        'user_id'         => $user->id
                     ];
                 });
 
             return response()->json([
                 'success' => true,
                 'stats' => [
-                    'active_clients'    => ['value' => $activeCount, 'label' => 'Currently coached'],
-                    'needing_attention' => ['value' => $attentionCount, 'label' => 'Off-track or low activity'],
-                    'pending_messages'  => ['value' => 3, 'label' => 'Unread client messages'], 
-                    
-                    'todays_checkins'   => ['value' => $todaysCheckinsCount, 'label' => 'Scheduled Today'] 
+                    'active_clients'    => [
+                        'value' => $activeCount, 
+                        'label' => 'Currently coached'
+                    ],
+                    'needing_attention' => [
+                        'value' => $attentionCount, 
+                        'label' => 'Off-track or low activity'
+                    ],
+                    'pending_messages'  => [
+                        'value' => 0, // Placeholder for actual unread messages count
+                        'label' => 'Unread client messages'
+                    ], 
+                    'todays_checkins'   => [
+                        'value' => $todaysCheckinsCount, 
+                        'label' => 'Scheduled Today'
+                    ] 
                 ],
                 'client_table' => $clientsTable,
                 'today_actions' => [
                     ['title' => 'Review progress', 'desc' => 'Check recent updates', 'link' => '/admin/clients'],
-                    ['title' => 'Send motivation', 'desc' => 'Sera encouragement or reminders', 'link' => '/admin/messages'],
+                    ['title' => 'Send motivation', 'desc' => 'Send encouragement or reminders', 'link' => '/admin/messages'],
                     ['title' => 'Review check-ins', 'desc' => 'View scheduled check-ins', 'link' => '/admin/calendar']
                 ]
             ], 200);
 
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false, 
+                'error'   => $e->getMessage()
+            ], 500);
         }
     }
 
