@@ -149,7 +149,7 @@ Route::prefix('v1')->group(function () {
        //AIObser
 
        Route::get('/ai-observemetrics', [AIObservemetricsController::class, 'show']);
-       Route::get('/dashboard-metrics', [AIObservemetricsController::class, 'index']);
+      Route::get('/dashboard-metrics/{id}', [AIObservemetricsController::class, 'index']);
         //getHealthReport
         Route::get('/health-report', [UserController::class, 'getHealthReport']);
 

@@ -2,7 +2,7 @@ name: CD Pipeline
 
 on:
   push:
-    branches: [main] # Trigger the workflow on push to the main branch
+    branches: [main]
 
 jobs:
   build-and-push:
@@ -44,20 +44,19 @@ jobs:
           username: root
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
-#            cd /habib/biovue  # Navigate to the project directory on the server
-              cd /root/backend/app
+            cd /root/backend/app
             # Stop currently running containers and remove orphans (containers not defined in the compose file)
             # This ensures we start with a clean state and avoid conflicts with old containers.
-            docker compose down --remove-orphans
+            docker-compose down --remove-orphans
 
             # Force remove stopped service containers
-            docker compose rm -f
+            docker-compose rm -f
 
             # Pull the latest Docker images defined in the compose file (e.g., the new application image)
-            docker compose pull
+            docker-compose pull
 
             # Start the services in detached mode (background) using the updated images
-            docker compose up -d
+            docker-compose up -d
 
             # Remove unused "dangling" images to free up disk space on the server
             docker image prune -f
