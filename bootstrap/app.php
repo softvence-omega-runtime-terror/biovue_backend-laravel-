@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Http\Middleware\CheckDataAccess;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -19,9 +20,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'api/v1/*', 
         ]);
-    })
-    ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            'data.access' => CheckDataAccess::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

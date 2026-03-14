@@ -61,9 +61,18 @@ class User extends Authenticatable
         ];
     }
 
+    public function canAccessDataOf($targetUserId)
+    {
+        if ($this->id == $targetUserId) return true;
 
+        if ($this->user_type === 'admin') return true;
 
-   
+        return \DB::table('connect_user_proffesions')
+            ->where('profession_id', $this->id)
+            ->where('user_id', $targetUserId)
+            ->exists();
+    }
+    
     public function profile() 
     { 
         return $this->hasOne(UserProfile::class); 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ProgramSet;
 use Illuminate\Http\Request;
 use App\Notifications\ProgramAssignedNotification;
+use Illuminate\Support\Facades\DB;
 
 class ProgramsSetController extends Controller
 {
@@ -293,5 +294,145 @@ public function assignUsers(Request $request)
         $notification->markAsRead();
 
         return response()->json(['status' => true]);
+    }
+
+    public function getProgramContext(Request $request, $userId = null)
+    {
+        try {
+            $loggedInUser = auth()->user();
+
+            $targetUserId = $userId ?: $loggedInUser->id;
+
+            if ($targetUserId != $loggedInUser->id) {
+                $isConnected = \DB::table('connect_user_proffesions')
+                    ->where('profession_id', $loggedInUser->id)
+                    ->where('user_id', $targetUserId)
+                    ->exists();
+
+                if (!$isConnected && $loggedInUser->user_type !== 'admin') {
+                    return response()->json([
+                        'success' => false, 
+                        'message' => 'Unauthorized: This client is not connected to you.'
+                    ], 403);
+                }
+            }
+
+            $programData = \DB::table('connect_to_professions')
+                ->where('connect_to_professions.user_id', $targetUserId)
+                ->join('programs_sets', 'connect_to_professions.program_set_id', '=', 'programs_sets.id')
+                ->select(
+                    'programs_sets.name as program_name',
+                    'programs_sets.duration',
+                    'programs_sets.primary_goal',
+                    'programs_sets.target_intensity as intensity'
+                )
+                ->latest('connect_to_professions.created_at')
+                ->first();
+
+            if (!$programData) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No program found for this user.'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'program_name' => $programData->program_name ?? 'N/A',
+                    'duration'     => ($programData->duration ?? 0) . ' weeks',
+                    'primary_goal' => $programData->primary_goal ?? 'N/A',
+                    'intensity'    => $programData->intensity ?? 'Moderate'
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getUsersInProgram($programSetId)
+    {
+        try {
+            $loggedInUser = auth()->user();
+
+            $program = DB::table('programs_sets')->where('id', $programSetId)->first();
+            if (!$program) {
+                return response()->json(['success' => false, 'message' => 'Program not found'], 404);
+            }
+
+            $connectedUsers = DB::table('connect_to_professions')
+                ->where('program_set_id', $programSetId)
+                ->join('users', 'connect_to_professions.user_id', '=', 'users.id')
+                ->leftJoin('user_profiles as profiles', 'users.id', '=', 'profiles.user_id')
+                ->select(
+                    'users.id', 
+                    'users.name', 
+                    'users.email', 
+                    'profiles.image as profile_image',
+                    'connect_to_professions.created_at as enrolled_at'
+                )
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'program_name' => $program->name,
+                'total_users' => $connectedUsers->count(),
+                'users' => $connectedUsers
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false, 
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    public function getUserPrograms($userId = null)
+    {
+        try {
+            $loggedInUser = auth()->user();
+            
+            $targetUserId = $userId ?: $loggedInUser->id;
+
+            if ($targetUserId != $loggedInUser->id) {
+                $isConnected = DB::table('connect_user_proffesions')
+                    ->where('profession_id', $loggedInUser->id)
+                    ->where('user_id', $targetUserId)
+                    ->exists();
+
+                if (!$isConnected && $loggedInUser->user_type !== 'admin') {
+                    return response()->json(['success' => false, 'message' => 'Unauthorized access'], 403);
+                }
+            }
+
+            $userPrograms = DB::table('connect_to_professions')
+                ->where('connect_to_professions.user_id', $targetUserId)
+                ->join('programs_sets', 'connect_to_professions.program_set_id', '=', 'programs_sets.id')
+                ->select(
+                    'programs_sets.id as program_id',
+                    'programs_sets.name',
+                    'programs_sets.duration',
+                    'programs_sets.primary_goal',
+                    'programs_sets.target_intensity',
+                    'connect_to_professions.created_at as assigned_date'
+                )
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'total_connected_programs' => $userPrograms->count(),
+                'data' => $userPrograms
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
