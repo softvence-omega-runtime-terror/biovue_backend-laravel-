@@ -148,8 +148,8 @@ Route::prefix('v1')->group(function () {
         Route::get('professional-client-card', [TrainerController::class, 'professionalClientCard']);   
        //AIObser
 
-       Route::get('/ai-observemetrics/{id}', [AIObservemetricsController::class, 'show']);
-       Route::get('/dashboard-metrics', [AIObservemetricsController::class, 'index']);
+       Route::get('/ai-observemetrics', [AIObservemetricsController::class, 'show']);
+      Route::get('/dashboard-metrics/{id}', [AIObservemetricsController::class, 'index']);
         //getHealthReport
         Route::get('/health-report', [UserController::class, 'getHealthReport']);
 
