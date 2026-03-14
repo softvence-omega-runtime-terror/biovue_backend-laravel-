@@ -42,7 +42,6 @@ class SleepController extends Controller
 
 
     public function getSleepReport(Request $request, $userId = null)
-
     {
         $id = $userId ?: auth()->id();
         
@@ -50,22 +49,37 @@ class SleepController extends Controller
         $startDate = Carbon::now()->subDays($days - 1)->startOfDay();
         $endDate = Carbon::now()->endOfDay();
 
+
         $sleepLogs = DB::table('sleep_logs')
             ->where('user_id', $id)
             ->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])
             ->orderBy('log_date', 'asc')
             ->get();
 
+
+        $sleepTarget = DB::table('target_goals')
+            ->where('user_id', $id)
+            ->value('sleep_target') ?? 0; 
+
+
+        $notes = DB::table('profession_notes')
+            ->join('users as professionals', 'profession_notes.profession_id', '=', 'professionals.id')
+            ->where('profession_notes.user_id', $id)
+            ->select('profession_notes.id', 'profession_notes.note', 'profession_notes.created_at', 'professionals.name as provider_name')
+            ->latest()
+            ->take(5)
+            ->get();
+
         $chartData = [];
         
         for ($i = 0; $i < $days; $i++) {
             $currentDate = Carbon::now()->subDays(($days - 1) - $i)->toDateString();
-            
             $log = $sleepLogs->where('log_date', $currentDate)->first();
 
             $chartData[] = [
                 'date' => Carbon::parse($currentDate)->format('d M'), 
                 'sleep_hours' => $log ? (float) $log->sleep_hours : 0,
+                'target_hours' => (float) $sleepTarget, 
                 'label' => Carbon::parse($currentDate)->format('D'),
             ];
         }
@@ -79,22 +93,24 @@ class SleepController extends Controller
             'period' => "Past $days Days",
             'statistics' => [
                 'average_sleep' => number_format($avgSleep, 1) . " Hrs",
+                'sleep_target' => number_format($sleepTarget, 1) . " Hrs", 
                 'consistency' => $consistency . "%",
                 'total_logged' => "$loggedDaysCount / $days Days",
             ],
-            'chart_data' => $chartData
+            'chart_data' => $chartData,
+            'profession_notes' => $notes 
         ]);
     }
 
-private function getStartDate($type) {
-    return match($type) {
-        'weekly' => Carbon::now()->subDays(6),
-        'monthly' => Carbon::now()->subDays(30), 
-        '3_months' => Carbon::now()->subMonths(3),
-        '6_months' => Carbon::now()->subMonths(6),
-        default => Carbon::now()->subDays(6),
-    };
-}
+    private function getStartDate($type) {
+        return match($type) {
+            'weekly' => Carbon::now()->subDays(6),
+            'monthly' => Carbon::now()->subDays(30), 
+            '3_months' => Carbon::now()->subMonths(3),
+            '6_months' => Carbon::now()->subMonths(6),
+            default => Carbon::now()->subDays(6),
+        };
+    }
 
     private function generateSleepChartData($type, $startDate, $endDate, $logs, $userId) {
         $data = [];

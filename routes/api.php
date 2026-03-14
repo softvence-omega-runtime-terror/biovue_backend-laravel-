@@ -271,6 +271,10 @@ Route::prefix('v1')->group(function () {
         Route::post('/products/status/{id}', [ProductController::class, 'updateProductStatus']);
         Route::get('/products/supplier', [ProductController::class, 'supplierProduct']);
 
+        Route::get('/trainer-notes/{userId}', [TrainerController::class, 'indexTrainerNotes']);
+        Route::post('/trainer-notes', [TrainerController::class, 'storeTrainerNote']);
+        Route::delete('/trainer-notes/{id}', [TrainerController::class, 'destroyTrainerNote']);
+
           Route::post('/plans/store-or-update', [PlanController::class, 'storeOrUpdatePlan']);
 
 
