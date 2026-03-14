@@ -36,7 +36,6 @@ RUN chown -R www-data:www-data /var/www/html
 RUN composer install --optimize-autoloader --no-dev
 
 # Install Node.js dependencies and build assets (for frontend)
-RUN npm install && npm run build
 
 # Set proper permissions for Laravel storage and cache directories
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
