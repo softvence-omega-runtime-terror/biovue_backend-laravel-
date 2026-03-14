@@ -88,89 +88,108 @@ class ActivityController extends Controller
         ], 200);
     }
 
-    public function getActivityReport(Request $request)
+    public function getActivityReport(Request $request, $userId = null)
     {
-        $userId = auth()->id();
-        $type = $request->query('type', 'weekly'); 
-        
-        $endDate = Carbon::today();
-        $startDate = Carbon::today();
+        $id = $userId ?: auth()->id();
+        $days = (int) $request->query('days', 7); 
 
-        if ($type == 'monthly') {
-            $startDate = Carbon::today()->subDays(29);
-        } elseif ($type == '3_months') {
-            $startDate = Carbon::today()->subMonths(3);
-        } else {
-            $startDate = Carbon::today()->subDays(6);
+        if (!in_array($days, [7, 15, 30, 90])) {
+            $days = 7; 
         }
 
-        $logs = ActivityLog::where('user_id', $userId)
-            ->whereBetween('log_date', [$startDate, $endDate])
+        $endDate = Carbon::today();
+        $startDate = Carbon::today()->subDays($days - 1);
+
+        $logs = ActivityLog::where('user_id', $id)
+            ->whereBetween('log_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
             ->orderBy('log_date', 'asc')
             ->get()
             ->keyBy(fn($item) => Carbon::parse($item->log_date)->format('Y-m-d'));
 
+        $stepsTarget = DB::table('target_goals')
+            ->where('user_id', $id)
+            ->value('daily_step_goal') ?? 0;
+
+        $notes = DB::table('profession_notes')
+            ->join('users as professionals', 'profession_notes.profession_id', '=', 'professionals.id')
+            ->where('profession_notes.user_id', $id)
+            ->select('profession_notes.id', 'profession_notes.note', 'profession_notes.created_at', 'professionals.name as provider_name')
+            ->latest()
+            ->take(5)
+            ->get();
+
         $chartData = [];
         $daysWithData = 0;
 
-        if ($type == '3_months') {
-            for ($date = $startDate->copy(); $date <= $endDate; $date->addWeek()) {
-                $weekEnd = $date->copy()->addDays(6);
-                $avgSteps = ActivityLog::where('user_id', $userId)
-                    ->whereBetween('log_date', [$date, $weekEnd])
-                    ->avg('daily_steps') ?? 0;
+        for ($date = $startDate->copy(); $date <= $endDate; $date->addDay()) {
+            $dateString = $date->format('Y-m-d');
+            $steps = isset($logs[$dateString]) ? (int)$logs[$dateString]->daily_steps : 0;
+            
+            $chartData[] = [
+                'label' => $days > 15 ? $date->format('d M') : $date->format('D'),
+                'steps' => $steps,
+                'target' => (int)$stepsTarget
+            ];
 
-                $chartData[] = [
-                    'label' => $date->format('M d'),
-                    'steps' => (int)$avgSteps
-                ];
-            }
-        } else {
-            for ($date = $startDate->copy(); $date <= $endDate; $date->addDay()) {
-                $dateString = $date->format('Y-m-d');
-                $steps = isset($logs[$dateString]) ? $logs[$dateString]->daily_steps : 0;
-                
-                $chartData[] = [
-                    'label' => $type == 'monthly' ? $date->format('d M') : $date->format('D'),
-                    'steps' => $steps
-                ];
-
-                if($steps > 0) $daysWithData++;
-            }
+            if($steps > 0) $daysWithData++;
         }
 
-        $totalDaysInRange = $startDate->diffInDays($endDate) + 1;
-        $averageSteps = $logs->avg('daily_steps') ?? 0;
-        $consistencyScore = ($daysWithData / $totalDaysInRange) * 100;
+        $totalSteps = $logs->sum('daily_steps'); 
+        $averageSteps = ($days > 0) ? ($totalSteps / $days) : 0;
+        
+        $consistencyScore = ($days > 0) ? ($daysWithData / $days) * 100 : 0;
 
         return response()->json([
             'status' => 'success',
             'data' => [
+                'period' => "Past $days Days",
                 'chart_data' => $chartData,
                 'statistics' => [
                     'average_steps' => number_format(round($averageSteps)) . " Steps",
+                    'steps_target' => number_format($stepsTarget) . " Steps",
                     'consistency' => round($consistencyScore) . "%",
-                    'best_streak' => $this->calculateStreak($userId) . " DAYS", 
+                    'best_streak' => $this->calculateStreak($id) . " DAYS", 
                     'current_trend' => $this->getTrendStatus($chartData),   
-                ]
+                ],
+                'profession_notes' => $notes 
             ]
         ]);
     }
 
-
-    private function calculateStreak($userId) {
-        return ActivityLog::where('user_id', $userId)
+    private function calculateStreak($userId)
+    {
+        $logs = ActivityLog::where('user_id', $userId)
             ->where('daily_steps', '>', 0)
-            ->count(); 
+            ->orderBy('log_date', 'desc')
+            ->pluck('log_date');
+
+        if ($logs->isEmpty()) return 0;
+
+        $streak = 0;
+        $currentDate = Carbon::today();
+
+        foreach ($logs as $logDate) {
+            $date = Carbon::parse($logDate);
+            if ($date->isSameDay($currentDate) || $date->isSameDay($currentDate->copy()->subDay())) {
+                $streak++;
+                $currentDate = $date->copy()->subDay();
+            } else {
+                break;
+            }
+        }
+        return $streak;
     }
 
-    private function getTrendStatus($chartData) {
+    private function getTrendStatus($chartData)
+    {
         $count = count($chartData);
         if ($count < 2) return "Stable";
-        
-        $last = $chartData[$count - 1]['steps'];
-        $previous = $chartData[$count - 2]['steps'];
-        
-        return $last >= $previous ? "Improving" : "Declining";
+
+        $lastValue = $chartData[$count - 1]['steps'];
+        $previousValue = $chartData[$count - 2]['steps'];
+
+        if ($lastValue > $previousValue) return "Improving";
+        if ($lastValue < $previousValue) return "Declining";
+        return "Stable";
     }
 }

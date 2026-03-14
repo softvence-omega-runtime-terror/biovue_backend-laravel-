@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('profession_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->string('note_category')->nullable();
             $table->text('note');
             $table->timestamps();
         });
