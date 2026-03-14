@@ -44,8 +44,8 @@ jobs:
           username: root
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
-#            cd /habib/biovue  # Navigate to the project directory on the server
-              cd /root/backend/app
+        #cd /habib/biovue  # Navigate to the project directory on the server
+            cd /root/backend/app
             # Stop currently running containers and remove orphans (containers not defined in the compose file)
             # This ensures we start with a clean state and avoid conflicts with old containers.
             docker compose down --remove-orphans
