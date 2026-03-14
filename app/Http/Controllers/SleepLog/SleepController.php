@@ -46,9 +46,13 @@ class SleepController extends Controller
         $id = $userId ?: auth()->id();
         
         $days = (int) $request->query('days', 7); 
-        $startDate = Carbon::now()->subDays($days - 1)->startOfDay();
-        $endDate = Carbon::now()->endOfDay();
+        
+        if (!in_array($days, [7, 15, 30, 90])) {
+            $days = 7; 
+        }
 
+        $endDate = Carbon::now()->endOfDay();
+        $startDate = Carbon::now()->subDays($days - 1)->startOfDay();
 
         $sleepLogs = DB::table('sleep_logs')
             ->where('user_id', $id)
@@ -56,11 +60,9 @@ class SleepController extends Controller
             ->orderBy('log_date', 'asc')
             ->get();
 
-
         $sleepTarget = DB::table('target_goals')
             ->where('user_id', $id)
             ->value('sleep_target') ?? 0; 
-
 
         $notes = DB::table('profession_notes')
             ->join('users as professionals', 'profession_notes.profession_id', '=', 'professionals.id')
@@ -71,21 +73,27 @@ class SleepController extends Controller
             ->get();
 
         $chartData = [];
-        
+        $totalSleepHours = 0; 
+        $loggedDaysCount = 0;
+
         for ($i = 0; $i < $days; $i++) {
             $currentDate = Carbon::now()->subDays(($days - 1) - $i)->toDateString();
             $log = $sleepLogs->where('log_date', $currentDate)->first();
+            
+            $hours = $log ? (float) $log->sleep_hours : 0;
+            $totalSleepHours += $hours;
 
             $chartData[] = [
                 'date' => Carbon::parse($currentDate)->format('d M'), 
-                'sleep_hours' => $log ? (float) $log->sleep_hours : 0,
+                'sleep_hours' => $hours,
                 'target_hours' => (float) $sleepTarget, 
-                'label' => Carbon::parse($currentDate)->format('D'),
+                'label' => $days > 15 ? Carbon::parse($currentDate)->format('d M') : Carbon::parse($currentDate)->format('D'),
             ];
+
+            if ($hours > 0) $loggedDaysCount++;
         }
 
-        $avgSleep = $sleepLogs->avg('sleep_hours') ?? 0;
-        $loggedDaysCount = $sleepLogs->where('sleep_hours', '>', 0)->count();
+        $avgSleep = ($days > 0) ? ($totalSleepHours / $days) : 0;
         $consistency = ($days > 0) ? round(($loggedDaysCount / $days) * 100) : 0;
 
         return response()->json([
