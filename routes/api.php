@@ -205,6 +205,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/goals', [TargetGoalController::class, 'storeOrUpdate']);
         Route::get('/goals', [TargetGoalController::class, 'getGoal']);
         Route::post('/goals/{id}', [TargetGoalController::class, 'update']);
+        Route::get('/get-goal/{userId?}', [TargetGoalController::class, 'getGoal']);
 
         Route::post('/adjust-program', [AdjustProgramController::class, 'storeOrUpdate']);
         Route::get('/adjust-program/{id}', [AdjustProgramController::class, 'show']);
@@ -249,6 +250,9 @@ Route::prefix('v1')->group(function () {
        
         Route::get('users/individuals', [UserController::class, 'individualUsers']);
         Route::post('program-sets/assign-users', [ProgramsSetController::class, 'assignUsers']);
+        Route::get('/program-context/{userId?}', [ProgramsSetController::class, 'getProgramContext']);
+        Route::get('/program-users/{programSetId}', [ProgramsSetController::class, 'getUsersInProgram']);
+        Route::get('/user-programs/{userId?}', [ProgramsSetController::class, 'getUserPrograms']);
 
         // Messaging
         Route::post('/messages/send', [MessageController::class, 'sendMessage']);
@@ -265,6 +269,11 @@ Route::prefix('v1')->group(function () {
         Route::post('/products/{id}', [ProductController::class, 'update']);
         Route::delete('/products/{id}', [ProductController::class, 'destroy']);
         Route::post('/products/status/{id}', [ProductController::class, 'updateProductStatus']);
+        Route::get('/products/supplier', [ProductController::class, 'supplierProduct']);
+
+        Route::get('/trainer-notes/{userId}', [TrainerController::class, 'indexTrainerNotes']);
+        Route::post('/trainer-notes', [TrainerController::class, 'storeTrainerNote']);
+        Route::delete('/trainer-notes/{id}', [TrainerController::class, 'destroyTrainerNote']);
 
           Route::post('/plans/store-or-update', [PlanController::class, 'storeOrUpdatePlan']);
 

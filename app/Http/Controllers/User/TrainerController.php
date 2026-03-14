@@ -5,6 +5,7 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TrainerController extends Controller
 {
@@ -116,5 +117,74 @@ class TrainerController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
+    }
+
+    public function storeTrainerNote(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'note' => 'required|string',
+        ]);
+
+        $professionId = auth()->id();
+
+        $isConnected = DB::table('connect_user_proffesions')
+            ->where('profession_id', $professionId)
+            ->where('user_id', $request->user_id)
+            ->exists();
+
+        if (!$isConnected && auth()->user()->user_type !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized: You are not connected to this user.'], 403);
+        }
+
+        $noteId = DB::table('profession_notes')->insertGetId([
+            'profession_id' => $professionId,
+            'user_id' => $request->user_id,
+            'note' => $request->note,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Note added successfully', 'note_id' => $noteId], 201);
+    }
+
+   
+    public function indexTrainerNotes($userId = null)
+    {
+        $loggedInUser = auth()->user();
+
+        $targetId = $userId ?: $loggedInUser->id;
+
+        $query = DB::table('profession_notes')
+            ->join('users as professionals', 'profession_notes.profession_id', '=', 'professionals.id')
+            ->where('profession_notes.user_id', $targetId) 
+            ->select('profession_notes.*', 'professionals.name as profession_name');
+
+        if ($loggedInUser->user_type === 'professional') {
+            $query->where('profession_id', $loggedInUser->id);
+        } elseif ($loggedInUser->user_type === 'individual' && $loggedInUser->id != $userId) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $notes = $query->latest()->get();
+
+        return response()->json(['success' => true, 'data' => $notes]);
+    }
+
+    public function destroyTrainerNote($id)
+    {
+        $note = DB::table('profession_notes')->where('id', $id)->first();
+
+        if (!$note) {
+            return response()->json(['success' => false, 'message' => 'Note not found'], 404);
+        }
+
+        if ($note->profession_id != auth()->id() && auth()->user()->user_type !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        DB::table('profession_notes')->where('id', $id)->delete();
+
+        return response()->json(['success' => true, 'message' => 'Note deleted successfully']);
     }
 }

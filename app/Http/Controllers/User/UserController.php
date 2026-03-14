@@ -26,36 +26,36 @@ class UserController extends Controller
     }
 
    public function individualUsers(Request $request)
-{
-    try {
-        $query = User::role('individual'); // Spatie scope
+    {
+        try {
+            $query = User::role('individual'); // Spatie scope
 
-        if ($request->has('email')) {
-            $email = $request->email;
-            $query->where('email', 'like', "%{$email}%"); // partial match
-        }
+            if ($request->has('email')) {
+                $email = $request->email;
+                $query->where('email', 'like', "%{$email}%"); // partial match
+            }
 
-        $users = $query->select('id', 'name', 'email')->get(); // id added
+            $users = $query->select('id', 'name', 'email')->get(); // id added
 
-        if ($users->isEmpty()) {
+            if ($users->isEmpty()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No individual users found.'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'data' => $users
+            ], 200);
+
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'No individual users found.'
-            ], 404);
+                'message' => 'Failed to fetch users. Error: '.$e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'status' => true,
-            'data' => $users
-        ], 200);
-
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Failed to fetch users. Error: '.$e->getMessage()
-        ], 500);
     }
-}
 
 
     public function getUserReport(Request $request)
@@ -739,10 +739,8 @@ class UserController extends Controller
     try {
         $loggedInUser = auth()->user();
         
-        // যদি userId প্যারামিটারে থাকে তবে সেটি ব্যবহার হবে, না থাকলে নিজের ID
         $targetId = $userId ?: $loggedInUser->id;
 
-        // প্রফেশনাল অন্য কারো ডাটা দেখতে চাইলে কানেকশন চেক
         if ($targetId != $loggedInUser->id) {
             $isConnected = DB::table('connect_user_proffesions')
                 ->where('profession_id', $loggedInUser->id)
@@ -758,12 +756,10 @@ class UserController extends Controller
         $startDate = now()->subDays($daysCount - 1)->startOfDay();
         $endDate = now()->endOfDay();
 
-        // ইউজার ডাটা এবং রিলেশন লোড
         $userData = \App\Models\User::with(['profile', 'targetGoals', 'adjustProgram'])->find($targetId);
         
         if (!$userData) return response()->json(['success' => false, 'message' => 'User not found'], 404);
 
-        // লগ ফেচিং
         $activity = DB::table('activity_logs')->where('user_id', $targetId)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
         $sleep = DB::table('sleep_logs')->where('user_id', $targetId)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
         $nutrition = DB::table('nutrition_logs')->where('user_id', $targetId)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
@@ -790,7 +786,6 @@ class UserController extends Controller
             ];
         }
 
-        // সেফ BMI এবং গোল ডাটা
         $latestWeight = $activity->last()->weight ?? ($userData->profile->weight ?? 0);
         $targetGoal = $userData->targetGoals?->first();
 

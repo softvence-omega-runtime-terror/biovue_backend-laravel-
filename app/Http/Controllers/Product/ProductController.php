@@ -30,10 +30,9 @@ class ProductController extends Controller
             'image'        => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        // Database-e pathanor age image path-ta thik kora
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('products', 'public');
-            $validated['image'] = $path; // validated array update kora
+            $validated['image'] = $path; 
         }
 
         $product = Product::create(array_merge($validated, [
@@ -59,6 +58,45 @@ class ProductController extends Controller
 
         return response()->json([
             'success' => true,
+            'data'    => $products
+        ]);
+    }
+
+    public function supplierProduct()
+    {
+        $user = auth()->user();
+
+        $products = Product::query()
+            ->join('users', 'products.supplier_id', '=', 'users.id')
+            ->leftJoin('user_profiles', 'users.id', '=', 'user_profiles.user_id')
+            ->select(
+                'products.*', 
+                'users.name as supplier_name', 
+                'users.email as supplier_email',
+                'user_profiles.image as supplier_image'
+            )
+            ->when($user->user_type === 'professional' && $user->profession_type === 'supplement_supplier', function ($q) use ($user) {
+                return $q->where('products.supplier_id', $user->id);
+            }, function ($q) {
+                return $q->where('products.status', 'published');
+            })
+            ->get();
+
+        $products->transform(function ($product) {
+            if ($product->image && !str_starts_with($product->image, 'http')) {
+                $product->image = asset('storage/' . $product->image);
+            }
+            
+            if ($product->supplier_image && !str_starts_with($product->supplier_image, 'http')) {
+                $product->supplier_image = asset('storage/' . $product->supplier_image);
+            }
+
+            return $product;
+        });
+
+        return response()->json([
+            'success' => true,
+            'count'   => $products->count(),
             'data'    => $products
         ]);
     }
