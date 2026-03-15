@@ -118,32 +118,34 @@ class ProjectionLifestyleController extends Controller
 
 
 
-    public function showLatest($userId)
-    {
-        try {
+    /**
+     * Show the latest projection of the authenticated user
+     */
+    public function showLatest($user_id)
+{
+    try {
 
-            $projection = ProjectionLifestyle::where('user_id', $userId)
-                ->latest()
-                ->first();
+        $projection = ProjectionLifestyle::where('user_id', $user_id)
+            ->latest()
+            ->first();
 
-            if (!$projection) {
-
-                return response()->json([
-                    'message' => 'No projection found for this user'
-                ], 404);
-            }
-
+        if (!$projection) {
             return response()->json([
-                'message' => 'Projection retrieved successfully',
-                'data' => $projection
-            ]);
-
-        } catch (\Exception $e) {
-
-            return response()->json([
-                'message' => 'Something went wrong',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'No projection found for this user'
+            ], 404);
         }
+
+        return response()->json([
+            'message' => 'Projection retrieved successfully',
+            'data' => $projection
+        ]);
+
+    } catch (\Exception $e) {
+
+        return response()->json([
+            'message' => 'Something went wrong',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 }
