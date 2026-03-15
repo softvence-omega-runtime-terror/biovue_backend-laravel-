@@ -35,9 +35,9 @@ class PlansSeeder extends Seeder
                     'Personal wellness dashboard',
                     'Basic body stats & trends',
                     'AI improvement suggestions',
-                    'Health indicators',
+                    'Health Indicators',
                     'Recommended coaches & clinics',
-                    'Achievement badges & progress reports'
+                    'Achievement badges & Progress reports'
                 ],
             ],
 
@@ -56,7 +56,7 @@ class PlansSeeder extends Seeder
                     'Recommended Business',
                     'Achievement badges',
                     'Progress tracking',
-                    'X% improved vs baseline',
+                    'X% Improved vs baseline',
                     'Recalculated after every photo',
                     'Standard Support Services'
                 ],
@@ -76,10 +76,10 @@ class PlansSeeder extends Seeder
                     'Up to 4 AI projections',
                     'External fitness tracker sync',
                     'Downloadable progress reports',
-                    'Historical trend vs AI projections',
+                    'Historical trends vs AI projections',
                     'Priority Email support',
                     'Full access AI-generated health suggestions',
-                    'Future Health insights (5 year projection)'
+                    'Future Health Insights (5 year projection)'
                 ],
             ],
 
@@ -96,7 +96,7 @@ class PlansSeeder extends Seeder
                 'status' => true,
                 'features' => [
                     'Up to 8 client accounts',
-                    '2 Projections per client/month',
+                    '16 Projections/month*',
                     'Client progress tracking',
                     'White-label reports',
                     'Email support',
@@ -117,13 +117,14 @@ class PlansSeeder extends Seeder
                 'status' => true,
                 'features' => [
                     'Up to 25 client accounts',
+                    '50 Projections/month*',
                     'Everything in Tier 1',
                     'Advanced analytics dashboard',
                     'API access',
                     'Priority email support',
                     'Custom branding',
-                    'Team collaboration (2 seats)',
-                    'Custom onboarding (via email)'
+                    'Team collaboration (3 seats)',
+                    'Dedicated account manager'
                 ],
             ],
 
@@ -139,11 +140,11 @@ class PlansSeeder extends Seeder
                 'features' => [
                     'Up to 150 client accounts',
                     'Everything in Tier 2',
-                    '4 Projections per client/month',
+                    '600 Projections/month*',
                     'Priority phone & email support',
-                    'Team collaboration (5 seats)',
-                    'Custom integrations',
-                    'Quarterly business reviews'
+                    'Team collaboration (10 seats)',
+                    'Quarterly business reviews',
+                    'Dedicated account manager'
                 ],
             ],
 
@@ -171,7 +172,6 @@ class PlansSeeder extends Seeder
         ];
 
         foreach ($plans as $plan) {
-
             Plan::updateOrCreate(
                 [
                     'name' => $plan['name'],
@@ -179,7 +179,6 @@ class PlansSeeder extends Seeder
                 ],
                 $plan
             );
-
         }
     }
 }
