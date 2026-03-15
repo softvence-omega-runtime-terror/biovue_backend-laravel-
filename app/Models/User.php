@@ -73,45 +73,45 @@ class User extends Authenticatable
             ->where('user_id', $targetUserId)
             ->exists();
     }
-    
-    public function profile() 
-    { 
-        return $this->hasOne(UserProfile::class); 
-    } 
-    
-    public function activityLogs() 
-    { 
-        return $this->hasMany(ActivityLog::class); 
-    } 
 
-    public function hydrationLogs() 
-    { 
-        return $this->hasMany(HydrationLog::class); 
-    } 
+    public function profile()
+    {
+        return $this->hasOne(UserProfile::class);
+    }
 
-    public function sleepLogs() 
-    { 
-        return $this->hasMany(SleepLog::class); 
-    } 
+    public function activityLogs()
+    {
+        return $this->hasMany(ActivityLog::class);
+    }
 
-    public function stressLogs() 
-    { 
-        return $this->hasMany(StressLog::class); 
-    } 
+    public function hydrationLogs()
+    {
+        return $this->hasMany(HydrationLog::class);
+    }
 
-    public function nutritionLogs() 
-    { 
+    public function sleepLogs()
+    {
+        return $this->hasMany(SleepLog::class);
+    }
+
+    public function stressLogs()
+    {
+        return $this->hasMany(StressLog::class);
+    }
+
+    public function nutritionLogs()
+    {
         return $this->hasMany(NutritionLog::class);
-    } 
+    }
 
     public function targetGoals()
-    { 
+    {
         return $this->hasOne(TargetGoal::class);
-    } 
+    }
 
     public function adjustProgram()
-    { 
-        return $this->hasOne(AdjustProgram::class, 'user_id'); 
+    {
+        return $this->hasOne(AdjustProgram::class, 'user_id');
     }
 
     protected $appends = ['image_url'];
@@ -120,7 +120,7 @@ class User extends Authenticatable
     {
         return $this->image ? asset('storage/' . $this->image) : null;
     }
-    
+
 
 
     public function programSets()
@@ -134,7 +134,7 @@ class User extends Authenticatable
         return $this->hasMany(PlanPayment::class, 'user_id');
     }
 
-    //for auto updated user plan id 
+    //for auto updated user plan id
     public function plan()
     {
         return $this->belongsTo(\App\Models\Plan::class, 'plan_id');
@@ -146,9 +146,9 @@ class User extends Authenticatable
         return $this->hasMany(Insight::class);
     }
 
-    public function sendUserNotify($type, $content) 
+    public function sendUserNotify($type, $content)
     {
-        $settings = $this->notificationSettings; 
+        $settings = $this->notificationSettings;
         $canSend = false;
 
         if (!$settings) return;
@@ -168,12 +168,12 @@ class User extends Authenticatable
         }
     }
 
-    public function notificationSettings() 
+    public function notificationSettings()
     {
-        return $this->hasOne(UserNotificationSetting::class);
+        return $this->hasOne(UserNotificationSetting::class,'user_id');
     }
 
-    public function medicalHistory() 
+    public function medicalHistory()
     {
         return $this->hasOne(UserMedicalHistory::class, 'user_id');
     }
@@ -195,8 +195,9 @@ class User extends Authenticatable
         return $this->myProfessionals();
     }
 
-    public function projections() 
+    public function projections()
     {
         return $this->hasMany(Projection::class, 'user_id');
     }
+
 }
