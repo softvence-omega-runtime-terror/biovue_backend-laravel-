@@ -13,7 +13,7 @@ class ProjectionLifestyleController extends Controller
     {
         $request->validate([
             'user_id' => 'required|integer',
-            'image' => 'required|file|mimes:jpg,jpeg,png,avif,webp|max:5120',
+            'image' => 'required|file|mimes:jpg,jpeg,png,avif,webp|max:8192',
             'duration' => 'nullable|in:6 months,1 year,5 years',
             'resolution' => 'nullable|in:2K,4K',
             'tier' => 'nullable|in:ultra,fast',
