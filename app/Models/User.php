@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Laravel\Sanctum\HasApiTokens;
 use App\Models\AI\Insight;
+use App\Models\UserProfile;
 
 
 class User extends Authenticatable
