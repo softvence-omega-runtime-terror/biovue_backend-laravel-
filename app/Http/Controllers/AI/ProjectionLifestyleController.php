@@ -5,15 +5,14 @@ namespace App\Http\Controllers\AI;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 use App\Models\AI\ProjectionLifestyle;
 
 class ProjectionLifestyleController extends Controller
 {
     public function store(Request $request)
     {
-        // Validate input
         $request->validate([
+            'user_id' => 'required|integer',
             'image' => 'required|file|mimes:jpg,jpeg,png,avif,webp|max:5120',
             'duration' => 'nullable|in:6 months,1 year,5 years',
             'resolution' => 'nullable|in:2K,4K',
@@ -21,29 +20,46 @@ class ProjectionLifestyleController extends Controller
         ]);
 
         try {
-            $user = auth()->user();
 
-            // Upload image to storage
-            $imagePath = $request->file('image')->store('projection_images', 'public');
+            $userId = $request->user_id;
+
+            /*
+            |--------------------------------------------------------------------------
+            | Upload image locally
+            |--------------------------------------------------------------------------
+            */
+
+            $imageFile = $request->file('image');
+
+            $imagePath = $imageFile->store('projection_images', 'public');
+
             $imageUrl = asset('storage/' . $imagePath);
 
-            // Call external API with a longer timeout
-            $response = Http::timeout(300) // wait up to 120 seconds
-                ->withOptions(['verify' => false]) // ignore SSL issues if needed
+            /*
+            |--------------------------------------------------------------------------
+            | Call AI Projection API
+            |--------------------------------------------------------------------------
+            */
+
+            $response = Http::retry(3, 5000)
+                ->timeout(600)
                 ->attach(
                     'image',
-                    file_get_contents($request->file('image')->getRealPath()),
-                    $request->file('image')->getClientOriginalName()
+                    file_get_contents($imageFile->getRealPath()),
+                    $imageFile->getClientOriginalName()
                 )
-                ->post('https://biovue-ai.onrender.com/api/v1/projection/current-lifestyle/', [
-                    'user_id' => $user->id,
-                    'duration' => $request->duration ?? '1 year',
-                    'resolution' => $request->resolution ?? '2K',
-                    'tier' => $request->tier ?? 'ultra',
-                ]);
+                ->post(
+                    'https://biovue-ai.onrender.com/api/v1/projection/current-lifestyle/',
+                    [
+                        'user_id' => $userId,
+                        'duration' => $request->duration ?? '1 year',
+                        'resolution' => $request->resolution ?? '2K',
+                        'tier' => $request->tier ?? 'ultra',
+                    ]
+                );
 
-            // Check if API call failed
             if (!$response->successful()) {
+
                 return response()->json([
                     'message' => 'Projection API failed',
                     'error' => $response->body()
@@ -52,14 +68,24 @@ class ProjectionLifestyleController extends Controller
 
             $data = $response->json();
 
-            // Build full projection URL
+            /*
+            |--------------------------------------------------------------------------
+            | Build projection URL
+            |--------------------------------------------------------------------------
+            */
+
             $projectionUrl = isset($data['projection_url'])
                 ? 'https://biovue-ai.onrender.com' . $data['projection_url']
                 : null;
 
-            // Save data to database
+            /*
+            |--------------------------------------------------------------------------
+            | Save projection to database
+            |--------------------------------------------------------------------------
+            */
+
             $projection = ProjectionLifestyle::create([
-                'user_id' => $user->id,
+                'user_id' => $userId,
                 'image' => $imageUrl,
                 'duration' => $request->duration ?? '1 year',
                 'resolution' => $request->resolution ?? '2K',
@@ -70,7 +96,9 @@ class ProjectionLifestyleController extends Controller
                 'timeframe' => $data['timeframe'] ?? null,
                 'est_bmi' => $data['est_bmi'] ?? null,
                 'est_weight' => $data['est_weight'] ?? null,
-                'expected_changes' => $data['expected_changes'] ?? null,
+                'expected_changes' => isset($data['expected_changes'])
+                    ? json_encode($data['expected_changes'])
+                    : null,
                 'confidence_score' => $data['confidence_score'] ?? null,
             ]);
 
@@ -80,6 +108,7 @@ class ProjectionLifestyleController extends Controller
             ]);
 
         } catch (\Exception $e) {
+
             return response()->json([
                 'message' => 'Something went wrong',
                 'error' => $e->getMessage()
@@ -88,7 +117,8 @@ class ProjectionLifestyleController extends Controller
     }
 
 
- /**
+
+    /**
      * Show the latest projection of the authenticated user
      */
     public function showLatest()
@@ -118,4 +148,5 @@ class ProjectionLifestyleController extends Controller
             ], 500);
         }
     }
+
 }
