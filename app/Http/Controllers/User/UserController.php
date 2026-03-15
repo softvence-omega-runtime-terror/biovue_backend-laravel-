@@ -470,17 +470,18 @@ class UserController extends Controller
                         'status' => $bmiScore > 24.9 ? "Higher than recommended range" : "Within healthy range",
                         'coach_target' => "Coach target: 26.0" 
                     ],
+                    'workouts' => [
+                        'count' => ($user->adjustProgram ? $user->adjustProgram->where('weekly_workouts', 1)->count() : 0) . " session", 
+                        'recommendation' => "Recommended " . ($target->weekly_workout_goal ?? '5') . " sessions",
+                        'coach_plan' => "Coach Plan : " . ($target->weekly_workout_goal ?? '5') . " session/week",
+                        'note' => "Volume adjusted for recovery"
+                    ],
+
                     'nutrition' => [
                         'quality' => "$nutritionScore/100",
                         'status' => $nutritionScore >= 70 ? "Balanced" : "Needs Improvement",
                         'meta' => $nutritionLogs->last()->description ?? "Meals tracked today",
-                        'coach_note' => $user->adjustProgram->nutrition_note ?? "Improve consistency on weekends"
-                    ],
-                    'workouts' => [
-                        'count' => $user->adjustProgram->where('weekly_workouts', 1)->count() . " session", // assuming is_workout exists
-                        'recommendation' => "Recommended " . ($target->weekly_workouts ?? '4-5') . " sessions",
-                        'coach_plan' => "Coach Plan : " . ($target->weekly_workouts ?? '3-4') . " session/week",
-                        'note' => "Volume adjusted for recovery"
+                        'coach_note' => optional($user->adjustProgram)->nutrition_note ?? "Improve consistency on weekends"
                     ],
                     'steps' => [
                         'avg' => (int) ($activityLogs->avg('daily_steps') ?? 0),
@@ -871,7 +872,7 @@ class UserController extends Controller
                     ],
                     'needing_attention' => [
                         'value' => $attentionCount, 
-                        'label' => 'Off-track or low activity'
+                        'label' => 'Clients needing attention'
                     ],
                     'pending_messages'  => [
                         'value' => 0, // Placeholder for actual unread messages count
