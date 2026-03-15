@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Product;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -101,6 +102,83 @@ class ProductController extends Controller
         ]);
     }
 
+    public function supplierProductForAI()
+    {
+        $products = Product::query()
+            ->join('users', 'products.supplier_id', '=', 'users.id')
+            ->leftJoin('user_profiles', 'users.id', '=', 'user_profiles.user_id')
+            ->select(
+                'products.*', 
+                'users.name as supplier_name', 
+                'users.email as supplier_email',
+                'user_profiles.image as supplier_image'
+            )
+            ->where('products.status', 'published')
+            ->get();
+
+        $products->transform(function ($product) {
+            if ($product->image && !str_starts_with($product->image, 'http')) {
+                $product->image = asset('storage/' . $product->image);
+            }
+            
+            if ($product->supplier_image && !str_starts_with($product->supplier_image, 'http')) {
+                $product->supplier_image = asset('storage/' . $product->supplier_image);
+            }
+
+            return $product;
+        });
+
+        return response()->json([
+            'success' => true,
+            'count'   => $products->count(),
+            'data'    => $products
+        ]);
+    }
+
+    public function supplierProfileWithProducts($supplierId)
+    {
+        $supplier = User::query()
+            ->leftJoin('user_profiles', 'users.id', '=', 'user_profiles.user_id')
+            ->where('users.id', $supplierId) 
+            ->where('users.profession_type', 'supplement_supplier') 
+            ->select(
+                'users.id', 
+                'users.name as supplier_name', 
+                'users.email as supplier_email', 
+                'user_profiles.image as supplier_image',
+                'user_profiles.bio'
+            )
+            ->first();
+
+        if (!$supplier) {
+            return response()->json(['success' => false, 'message' => 'Supplier not found'], 404);
+        }
+
+        if ($supplier->supplier_image && !str_starts_with($supplier->supplier_image, 'http')) {
+            $supplier->supplier_image = asset('storage/' . $supplier->supplier_image);
+        }
+
+        $products = Product::where('supplier_id', $supplierId)
+            ->where('status', 'published')
+            ->latest()
+            ->get();
+
+        $products->transform(function ($product) {
+            if ($product->image && !str_starts_with($product->image, 'http')) {
+                $product->image = asset('storage/' . $product->image);
+            }
+            return $product;
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'supplier' => $supplier,
+                'total_products' => $products->count(),
+                'products' => $products
+            ]
+        ]);
+    }
     public function updateProductStatus(Request $request, $id)
     {
         try {

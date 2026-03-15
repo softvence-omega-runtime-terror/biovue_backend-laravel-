@@ -32,6 +32,7 @@ class TargetGoalController extends Controller
             'sleep_target'        => 'nullable|numeric|between:0,24',
             'start_date'          => 'nullable|date',
             'end_date'            => 'nullable|date|after_or_equal:start_date',
+            'water_target'        => 'nullable|integer|min:0|max:20',
         ]);
 
         $goal = TargetGoal::updateOrCreate(
@@ -58,12 +59,10 @@ class TargetGoalController extends Controller
     try {
         $loggedInUser = auth()->user();
         
-        // ১. যদি আইডি না পাঠানো হয় তবে নিজের আইডি ব্যবহার হবে, আর পাঠানো হলে সেটি হবে টার্গেট ক্লায়েন্ট
         $targetId = $userId ?: $loggedInUser->id;
 
-        // ২. সিকিউরিটি চেক: প্রফেশনাল কি এই ক্লায়েন্টের সাথে কানেক্টেড?
         if ($targetId != $loggedInUser->id) {
-            $isConnected = \DB::table('connect_user_proffesions')
+            $isConnected = DB::table('connect_user_proffesions')
                 ->where('profession_id', $loggedInUser->id)
                 ->where('user_id', $targetId)
                 ->exists();
@@ -76,7 +75,6 @@ class TargetGoalController extends Controller
             }
         }
 
-        // ৩. গোল ডাটা ফেচ করা
         $goal = TargetGoal::where('user_id', $targetId)
             ->where('is_active', true)
             ->get();
@@ -103,10 +101,8 @@ class TargetGoalController extends Controller
 
     $loggedInUser = Auth::user();
 
-    // ১. চেক করুন ইউজার নিজের গোল আপডেট করছে কি না
     $isOwner = $goal->user_id == $loggedInUser->id;
 
-    // ২. যদি ট্রেইনার হয়, তবে চেক করুন এই ক্লায়েন্ট তার সাথে কানেক্টেড কি না
     $isConnectedTrainer = false;
     if (in_array($loggedInUser->user_type, ['professional', 'trainer', 'coach', 'trainer_coach'])) {
         $isConnectedTrainer = DB::table('connect_user_proffesions')
@@ -115,7 +111,6 @@ class TargetGoalController extends Controller
             ->exists();
     }
 
-    // মালিক অথবা কানেক্টেড ট্রেইনার হলে অনুমতি দিন
     if ($isOwner || $isConnectedTrainer) {
         
         $validated = $request->validate([

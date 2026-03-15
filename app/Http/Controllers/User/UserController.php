@@ -735,80 +735,80 @@ class UserController extends Controller
     // }
 
     public function userOverviewChart(Request $request, $userId = null)
-{
-    try {
-        $loggedInUser = auth()->user();
-        
-        $targetId = $userId ?: $loggedInUser->id;
+    {
+        try {
+            $loggedInUser = auth()->user();
+            
+            $targetId = $userId ?: $loggedInUser->id;
 
-        if ($targetId != $loggedInUser->id) {
-            $isConnected = DB::table('connect_user_proffesions')
-                ->where('profession_id', $loggedInUser->id)
-                ->where('user_id', $targetId)
-                ->exists();
+            if ($targetId != $loggedInUser->id) {
+                $isConnected = DB::table('connect_user_proffesions')
+                    ->where('profession_id', $loggedInUser->id)
+                    ->where('user_id', $targetId)
+                    ->exists();
 
-            if (!$isConnected) {
-                return response()->json(['success' => false, 'message' => 'Unauthorized client access'], 403);
+                if (!$isConnected) {
+                    return response()->json(['success' => false, 'message' => 'Unauthorized client access'], 403);
+                }
             }
-        }
 
-        $daysCount = (int) $request->query('days', 7); 
-        $startDate = now()->subDays($daysCount - 1)->startOfDay();
-        $endDate = now()->endOfDay();
+            $daysCount = (int) $request->query('days', 7); 
+            $startDate = now()->subDays($daysCount - 1)->startOfDay();
+            $endDate = now()->endOfDay();
 
-        $userData = \App\Models\User::with(['profile', 'targetGoals', 'adjustProgram'])->find($targetId);
-        
-        if (!$userData) return response()->json(['success' => false, 'message' => 'User not found'], 404);
+            $userData = \App\Models\User::with(['profile', 'targetGoals', 'adjustProgram'])->find($targetId);
+            
+            if (!$userData) return response()->json(['success' => false, 'message' => 'User not found'], 404);
 
-        $activity = DB::table('activity_logs')->where('user_id', $targetId)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
-        $sleep = DB::table('sleep_logs')->where('user_id', $targetId)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
-        $nutrition = DB::table('nutrition_logs')->where('user_id', $targetId)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+            $activity = DB::table('activity_logs')->where('user_id', $targetId)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+            $sleep = DB::table('sleep_logs')->where('user_id', $targetId)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+            $nutrition = DB::table('nutrition_logs')->where('user_id', $targetId)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
 
-        $chartData = [];
-        $period = \Carbon\CarbonPeriod::create($startDate, $endDate);
+            $chartData = [];
+            $period = \Carbon\CarbonPeriod::create($startDate, $endDate);
 
-        foreach ($period as $date) {
-            $formattedDate = $date->toDateString();
-            $actLog = $activity->where('log_date', $formattedDate)->first();
-            $slpLog = $sleep->where('log_date', $formattedDate)->first();
-            $nutLog = $nutrition->where('log_date', $formattedDate)->first();
+            foreach ($period as $date) {
+                $formattedDate = $date->toDateString();
+                $actLog = $activity->where('log_date', $formattedDate)->first();
+                $slpLog = $sleep->where('log_date', $formattedDate)->first();
+                $nutLog = $nutrition->where('log_date', $formattedDate)->first();
 
-            $chartData[] = [
-                'label' => $daysCount <= 7 ? $date->format('D') : $date->format('d M'),
-                'weight' => $actLog ? (float)$actLog->weight : null,
-                'steps' => $actLog ? (int)$actLog->daily_steps : 0,
-                'sleep_hours' => $slpLog ? (float)$slpLog->sleep_hours : 0,
-                'nutrition' => [
-                    'protein' => $nutLog ? (int)$nutLog->protein_servings : 0,
-                    'carbs' => $nutLog ? (int)$nutLog->carb_quality : 0,
-                    'fats' => $nutLog ? (int)$nutLog->fat_sources : 0,
+                $chartData[] = [
+                    'label' => $daysCount <= 7 ? $date->format('D') : $date->format('D'),
+                    'weight' => $actLog ? (float)$actLog->weight : null,
+                    'steps' => $actLog ? (int)$actLog->daily_steps : 0,
+                    'sleep_hours' => $slpLog ? (float)$slpLog->sleep_hours : 0,
+                    'nutrition' => [
+                        'protein' => $nutLog ? (int)$nutLog->protein_servings : 0,
+                        'carbs' => $nutLog ? (int)$nutLog->carb_quality : 0,
+                        'fats' => $nutLog ? (int)$nutLog->fat_sources : 0,
+                    ]
+                ];
+            }
+
+            $latestWeight = $activity->last()->weight ?? ($userData->profile->weight ?? 0);
+            $targetGoal = $userData->targetGoals?->first();
+
+            return response()->json([
+                'success' => true,
+                'client_name' => $userData->name,
+                'charts' => $chartData, 
+                'health_overview' => [
+                    'weight' => [
+                        'current' => $latestWeight,
+                        'target' => $targetGoal->target_weight ?? 0
+                    ],
+                    'steps' => [
+                        'avg' => (int)$activity->avg('daily_steps'),
+                        'target' => $targetGoal->daily_step_goal ?? 6500
+                    ]
                 ]
-            ];
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
-
-        $latestWeight = $activity->last()->weight ?? ($userData->profile->weight ?? 0);
-        $targetGoal = $userData->targetGoals?->first();
-
-        return response()->json([
-            'success' => true,
-            'client_name' => $userData->name,
-            'charts' => $chartData, 
-            'health_overview' => [
-                'weight' => [
-                    'current' => $latestWeight,
-                    'target' => $targetGoal->target_weight ?? 0
-                ],
-                'steps' => [
-                    'avg' => (int)$activity->avg('daily_steps'),
-                    'target' => $targetGoal->daily_step_goal ?? 6500
-                ]
-            ]
-        ]);
-
-    } catch (\Exception $e) {
-        return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
     }
-}
 
     private function calcConsist($title, $logs, $days, $target, $col = 'sleep_hours')
     {

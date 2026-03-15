@@ -275,17 +275,17 @@ Route::prefix('v1')->group(function () {
         Route::post('/trainer-notes', [TrainerController::class, 'storeTrainerNote']);
         Route::delete('/trainer-notes/{id}', [TrainerController::class, 'destroyTrainerNote']);
 
-          Route::post('/plans/store-or-update', [PlanController::class, 'storeOrUpdatePlan']);
-
-
-
-
+        Route::post('/plans/store-or-update', [PlanController::class, 'storeOrUpdatePlan']);
         
         // Get all unread notifications for logged-in user
-           Route::get('/notifications', [ProgramsSetController::class, 'unread']);
+        Route::get('/notifications', [ProgramsSetController::class, 'unread']);
         Route::post('/notifications/mark-read/{id}', [ProgramsSetController::class, 'markRead']);
 
         Route::get('supplyer-dashboard',[SupplyerController::class,'index']);
         Route::get('all-users-for-supplyer', [SupplyerController::class, 'userIndex']);
     });
+
+    
+    Route::get('/products/supplier/ai', [ProductController::class, 'supplierProductForAI']);
+    Route::get('/supplier-profile/{id}', [ProductController::class, 'supplierProfileWithProducts']);
 });
