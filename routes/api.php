@@ -116,6 +116,7 @@ Route::prefix('v1')->group(function () {
          Route::post('/projection-lifestyle', [ProjectionLifestyleController::class, 'store']);
          // projection-lifestyle latest
         Route::get('/projection-lifestyle/latest', [ProjectionLifestyleController::class, 'showLatest']);
+        Route::post('/projection/generate', [ProjectionLifestyleController::class, 'generateProjection']);
 
         //Projection goal
         // Store a new future goal projection

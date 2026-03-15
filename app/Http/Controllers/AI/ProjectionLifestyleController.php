@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use App\Models\AI\ProjectionLifestyle;
+use App\Models\Projection;
+use Illuminate\Support\Str;
 
 class ProjectionLifestyleController extends Controller
 {
@@ -161,4 +163,89 @@ class ProjectionLifestyleController extends Controller
             ], 500);
         }
     }
+
+    public function generateProjection(Request $request)
+{
+    // ১. মেথডের শুরুতেই পিএইচপি এক্সিকিউশন টাইম বাড়িয়ে নিন
+    set_time_limit(300); 
+
+    $request->validate([
+        'image'      => 'required|image|mimes:jpeg,png,jpg|max:10240', 
+        'duration'   => 'required|in:6 months,1 year,5 years',
+        'resolution' => 'nullable|in:2K,4K',
+        'tier'       => 'nullable|in:ultra,fast',
+    ]);
+
+    try {
+        $user = auth()->user();
+        $apiUrl = "https://biovue-ai.onrender.com/api/v1/projection/current-lifestyle/";
+
+        $currentPhotoPath = $request->file('image')->store('projections/originals', 'public');
+
+        // ২. এখানে Timeout এবং connectTimeout যোগ করুন
+        $response = Http::timeout(180) // মোট ১৮০ সেকেন্ড পর্যন্ত উত্তরের জন্য অপেক্ষা করবে
+            ->connectTimeout(30)       // সার্ভারের সাথে কানেক্ট হতে ৩০ সেকেন্ড সময় নিবে
+            ->attach(
+                'image', 
+                file_get_contents($request->file('image')), 
+                $request->file('image')->getClientOriginalName()
+            )->post($apiUrl, [
+                'user_id'    => (string) $user->id,
+                'duration'   => $request->duration,
+                'resolution' => $request->input('resolution', '2K'),
+                'tier'       => $request->input('tier', 'fast'),
+            ]);
+
+        if ($response->successful()) {
+            $apiData = $response->json();
+            $projectedImageUrl = "https://biovue-ai.onrender.com" . $apiData['projection_url'];
+
+            // ৩. এখানে file_get_contents এর বদলে Http::get ব্যবহার করুন টাইমআউটসহ
+            $imageResponse = Http::timeout(120)->get($projectedImageUrl);
+            
+            if(!$imageResponse->successful()) {
+                throw new \Exception("Failed to download projected image from AI server.");
+            }
+            
+            $imageContent = $imageResponse->body();
+            $projectedFileName = 'projections/results/' . Str::random(30) . '.webp';
+            Storage::disk('public')->put($projectedFileName, $imageContent);
+
+            // ডাটাবেসে সেভ করা
+            $projection = Projection::create([
+                'user_id'          => $user->id,
+                'projection_id'    => $apiData['projection_id'],
+                'lifestyle_type'   => $apiData['route'] ?? 'current-lifestyle',
+                'time_horizon'     => $apiData['timeframe'],
+                'duration'         => $request->duration,  
+                'resolution'       => $request->input('resolution', '2K'),
+                'tier'             => $request->input('tier', 'fast'),
+                'current_photo'    => $currentPhotoPath,
+                'projected_photo'  => $projectedFileName,
+                'projected_bmi'    => $apiData['est_bmi'],
+                'projected_weight' => (float) filter_var($apiData['est_weight'], FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION),
+                'expected_changes' => $apiData['expected_changes'], 
+                'confidence_score' => $apiData['confidence_score'] ?? null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Future projection generated successfully!',
+                'data'    => $projection
+            ], 201);
+        }
+
+        return response()->json([
+            'success' => false, 
+            'error'   => 'AI Service Provider Error',
+            'details' => $response->json()
+        ], $response->status());
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false, 
+            'error'   => 'Server Error: ' . $e->getMessage()
+        ], 500);
+    }
+}
 }
