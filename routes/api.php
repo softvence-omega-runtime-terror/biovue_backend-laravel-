@@ -115,15 +115,16 @@ Route::prefix('v1')->group(function () {
          //project-lifestyle
          Route::post('/projection-lifestyle', [ProjectionLifestyleController::class, 'store']);
          // projection-lifestyle latest
-        Route::get('/projection-lifestyle/latest', [ProjectionLifestyleController::class, 'showLatest']);
+       Route::get('/projection-lifestyle/latest/{user_id}', [ProjectionLifestyleController::class, 'showLatest']);
         Route::post('/projection/generate', [ProjectionLifestyleController::class, 'generateProjection']);
 
         //Projection goal
-        // Store a new future goal projection
-         Route::post('/projection-future-goal', [ProjectionFutureGoalController::class, 'store']);
+        Route::post('/projection-future-goal', [ProjectionFutureGoalController::class, 'store']);
 
-        // Get the latest projection for the authenticated user
-        Route::get('/projection-future-goal/latest', [ProjectionFutureGoalController::class, 'showLatest']);
+        Route::get('/projection-future-goal/latest/{user_id}', [ProjectionFutureGoalController::class, 'showLatest']);
+
+
+        
         //Recommendation
         Route::get('recommend/professionals/{user_id}', [RecommendationController::class, 'index']);
          Route::get('/trainer-recommended-users/{trainer_id}', [RecommendationController::class, 'trainerUsers']);
