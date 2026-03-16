@@ -4,106 +4,55 @@ namespace App\Http\Controllers\AI;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use App\Models\AI\ProjectionLifestyle;
 
 class ProjectionLifestyleController extends Controller
 {
+    /**
+     * Save AI projection response
+     */
     public function store(Request $request)
     {
         $request->validate([
-            'user_id' => 'required|integer',
-            'image' => 'required|file|mimes:jpg,jpeg,png,avif,webp|max:8192',
+            'user_id' => 'required',
+            'image' => 'required|string',
             'duration' => 'nullable|in:6 months,1 year,5 years',
             'resolution' => 'nullable|in:2K,4K',
             'tier' => 'nullable|in:ultra,fast',
+
+            'projection_id' => 'nullable|string',
+            'projection_url' => 'nullable|string',
+            'route' => 'nullable|string',
+            'timeframe' => 'nullable|string',
+            'est_bmi' => 'nullable|numeric',
+            'est_weight' => 'nullable|numeric',
+            'expected_changes' => 'nullable|array',
+            'confidence_score' => 'nullable|numeric',
         ]);
 
         try {
 
-            $userId = $request->user_id;
-
-            /*
-            |--------------------------------------------------------------------------
-            | Upload image locally
-            |--------------------------------------------------------------------------
-            */
-
-            $imageFile = $request->file('image');
-
-            $imagePath = $imageFile->store('projection_images', 'public');
-
-            $imageUrl = asset('storage/' . $imagePath);
-
-            /*
-            |--------------------------------------------------------------------------
-            | Call AI Projection API
-            |--------------------------------------------------------------------------
-            */
-
-            $response = Http::retry(3, 5000)
-                ->timeout(600)
-                ->attach(
-                    'image',
-                    file_get_contents($imageFile->getRealPath()),
-                    $imageFile->getClientOriginalName()
-                )
-                ->post(
-                    'https://biovue-ai.onrender.com/api/v1/projection/current-lifestyle/',
-                    [
-                        'user_id' => $userId,
-                        'duration' => $request->duration ?? '1 year',
-                        'resolution' => $request->resolution ?? '2K',
-                        'tier' => $request->tier ?? 'ultra',
-                    ]
-                );
-
-            if (!$response->successful()) {
-
-                return response()->json([
-                    'message' => 'Projection API failed',
-                    'error' => $response->body()
-                ], 500);
-            }
-
-            $data = $response->json();
-
-            /*
-            |--------------------------------------------------------------------------
-            | Build projection URL
-            |--------------------------------------------------------------------------
-            */
-
-            $projectionUrl = isset($data['projection_url'])
-                ? 'https://biovue-ai.onrender.com' . $data['projection_url']
-                : null;
-
-            /*
-            |--------------------------------------------------------------------------
-            | Save projection to database
-            |--------------------------------------------------------------------------
-            */
-
             $projection = ProjectionLifestyle::create([
-                'user_id' => $userId,
-                'image' => $imageUrl,
+                'user_id' => $request->user_id,
+                'image' => $request->image,
                 'duration' => $request->duration ?? '1 year',
                 'resolution' => $request->resolution ?? '2K',
                 'tier' => $request->tier ?? 'ultra',
-                'projection_id' => $data['projection_id'] ?? null,
-                'projection_url' => $projectionUrl,
-                'route' => $data['route'] ?? null,
-                'timeframe' => $data['timeframe'] ?? null,
-                'est_bmi' => $data['est_bmi'] ?? null,
-                'est_weight' => $data['est_weight'] ?? null,
-                'expected_changes' => isset($data['expected_changes'])
-                    ? json_encode($data['expected_changes'])
+
+                'projection_id' => $request->projection_id,
+                'projection_url' => $request->projection_url,
+                'route' => $request->route,
+                'timeframe' => $request->timeframe,
+                'est_bmi' => $request->est_bmi,
+                'est_weight' => $request->est_weight,
+                'expected_changes' => $request->expected_changes
+                    ? json_encode($request->expected_changes)
                     : null,
-                'confidence_score' => $data['confidence_score'] ?? null,
+                'confidence_score' => $request->confidence_score,
             ]);
 
             return response()->json([
-                'message' => 'Projection generated successfully',
+                'message' => 'Projection saved successfully',
                 'data' => $projection
             ]);
 
@@ -116,36 +65,34 @@ class ProjectionLifestyleController extends Controller
         }
     }
 
-
-
     /**
-     * Show the latest projection of the authenticated user
+     * Show latest projection by user
      */
     public function showLatest($user_id)
-{
-    try {
+    {
+        try {
 
-        $projection = ProjectionLifestyle::where('user_id', $user_id)
-            ->latest()
-            ->first();
+            $projection = ProjectionLifestyle::where('user_id', $user_id)
+                ->latest()
+                ->first();
 
-        if (!$projection) {
+            if (!$projection) {
+                return response()->json([
+                    'message' => 'No projection found for this user'
+                ], 404);
+            }
+
             return response()->json([
-                'message' => 'No projection found for this user'
-            ], 404);
+                'message' => 'Projection retrieved successfully',
+                'data' => $projection
+            ]);
+
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'message' => 'Projection retrieved successfully',
-            'data' => $projection
-        ]);
-
-    } catch (\Exception $e) {
-
-        return response()->json([
-            'message' => 'Something went wrong',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 }
