@@ -13,42 +13,27 @@ class ProjectionLifestyleController extends Controller
      */
     public function store(Request $request)
     {
+        // Optional: validate user_id
         $request->validate([
-            'user_id' => 'required',
-            'image' => 'required|string',
-            'duration' => 'nullable|in:6 months,1 year,5 years',
-            'resolution' => 'nullable|in:2K,4K',
-            'tier' => 'nullable|in:ultra,fast',
-
-            'projection_id' => 'nullable|string',
-            'projection_url' => 'nullable|string',
-            'route' => 'nullable|string',
-            'timeframe' => 'nullable|string',
-            'est_bmi' => 'nullable|numeric',
-            'est_weight' => 'nullable|numeric',
-            'expected_changes' => 'nullable|array',
-            'confidence_score' => 'nullable|numeric',
+            'user_id' => 'required|integer',
         ]);
 
         try {
+            $data = $request->all();
 
             $projection = ProjectionLifestyle::create([
-                'user_id' => $request->user_id,
-                'image' => $request->image,
-                'duration' => $request->duration ?? '1 year',
-                'resolution' => $request->resolution ?? '2K',
-                'tier' => $request->tier ?? 'ultra',
-
-                'projection_id' => $request->projection_id,
-                'projection_url' => $request->projection_url,
-                'route' => $request->route,
-                'timeframe' => $request->timeframe,
-                'est_bmi' => $request->est_bmi,
-                'est_weight' => $request->est_weight,
-                'expected_changes' => $request->expected_changes
-                    ? json_encode($request->expected_changes)
+                'user_id' => $data['user_id'],
+                'image' => $data['image'] ?? null,
+                'projection_id' => $data['projection_id'] ?? null,
+                'projection_url' => $data['projection_url'] ?? null,
+                'route' => $data['route'] ?? null,
+                'timeframe' => $data['timeframe'] ?? null,
+                'est_bmi' => $data['est_bmi'] ?? null,
+                'est_weight' => $data['est_weight'] ?? null,
+                'expected_changes' => isset($data['expected_changes'])
+                    ? json_encode($data['expected_changes'])
                     : null,
-                'confidence_score' => $request->confidence_score,
+                'confidence_score' => $data['confidence_score'] ?? null,
             ]);
 
             return response()->json([
@@ -57,7 +42,6 @@ class ProjectionLifestyleController extends Controller
             ]);
 
         } catch (\Exception $e) {
-
             return response()->json([
                 'message' => 'Something went wrong',
                 'error' => $e->getMessage()
@@ -71,7 +55,6 @@ class ProjectionLifestyleController extends Controller
     public function showLatest($user_id)
     {
         try {
-
             $projection = ProjectionLifestyle::where('user_id', $user_id)
                 ->latest()
                 ->first();
@@ -88,7 +71,6 @@ class ProjectionLifestyleController extends Controller
             ]);
 
         } catch (\Exception $e) {
-
             return response()->json([
                 'message' => 'Something went wrong',
                 'error' => $e->getMessage()
