@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Schedule;
 use App\Models\Reminder;
 use App\Models\User;
+use App\Notifications\GoalUpdateNotification;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
@@ -17,14 +18,14 @@ class ScheduleController extends Controller
     public function index(Request $request)
     {
         $date = $request->query('date', Carbon::today()->toDateString());
-        
+
         $schedules = Schedule::with(['client' => function($query) {
             $query->select('id', 'name')->with(['profile' => function($q) {
-                $q->select('user_id', 'image'); 
+                $q->select('user_id', 'image');
             }]);
         }])
         ->whereBetween('schedule_date', [
-            Carbon::parse($date)->startOfWeek(), 
+            Carbon::parse($date)->startOfWeek(),
             Carbon::parse($date)->endOfWeek()
         ])
         ->get();
@@ -115,7 +116,8 @@ class ScheduleController extends Controller
         ]);
 
         $client = User::find($request->client_id);
-        $client->notify(new ReminderNotification($reminder));
+//        $client->notify(new ReminderNotification($reminder));
+        $client->notify(new ReminderNotification('new Reminder',$request->message ?? 'Doing Great','reminder_message'));
 
         if ($request->push_notification) {
             $this->sendPushNotification($request->client_id, $request->message);
@@ -127,7 +129,7 @@ class ScheduleController extends Controller
     private function sendPushNotification($clientId, $message)
     {
         $user = User::find($clientId);
-        $fcmToken = $user->fcm_token; 
+        $fcmToken = $user->fcm_token;
 
         if (!$fcmToken) return;
 
@@ -135,10 +137,10 @@ class ScheduleController extends Controller
             'https://www.googleapis.com/auth/cloud-platform',
             storage_path('app/service-account.json')
         );
-        
+
         $accessToken = $credentials->fetchAuthToken()['access_token'];
         $client = new Client();
-        $projectId = 'your-firebase-project-id'; 
+        $projectId = 'your-firebase-project-id';
 
         try {
             $client->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [

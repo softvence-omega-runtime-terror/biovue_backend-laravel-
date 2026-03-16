@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Payment;
 
 use App\Http\Controllers\Controller;
+use App\Notifications\SubscriptionNotification;
+use GPBMetadata\Google\Api\Auth;
 use Illuminate\Http\Request;
 use App\Models\PlanPayment;
 use App\Models\Plan;
@@ -229,6 +231,10 @@ public function processPayment(Request $request)
      */
     public function paymentSuccess(Request $request)
     {
+        $user = auth()->user();
+
+        $user->notify(new SubscriptionNotification('New Subscription', 'Your Subscription Is Successful','subscription_message'));
+
         return response()->json([
             'success'    => true,
             'session_id' => $request->query('session_id'),

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserMedicalHistory;
 use App\Models\UserProfile;
+use App\Notifications\InsightNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -23,7 +24,7 @@ class UserProfileController extends Controller
             'user_id'         => 'required|exists:users,id',
             'user_type'       => 'required|in:individual,professional',
             'profession_type' => 'nullable|string|in:trainer_coach,nutritionist,supplement_supplier',
-            
+
             'age'              => 'nullable|integer',
             'sex'              => 'nullable|string|max:20',
             'image'            => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
@@ -47,7 +48,7 @@ class UserProfileController extends Controller
             'thyroid_issue'       => 'nullable|boolean',
             'current_medication'  => 'nullable|string',
             'smoking_status'       => 'nullable|boolean',
-            'alcohol_consumption' => 'nullable|boolean',    
+            'alcohol_consumption' => 'nullable|boolean',
             'stress_level'         => 'nullable|string',
             'daily_step'          => 'nullable|integer',
             'sleep_hour'          => 'nullable|numeric',
@@ -80,8 +81,8 @@ class UserProfileController extends Controller
         }
 
         $medicalFields = [
-            'diabetes', 'high_blood_pressure', 'high_cholesterol', 'heart_disease', 
-            'asthma', 'athritis', 'depression', 'anxiety', 'sleep_apnea', 
+            'diabetes', 'high_blood_pressure', 'high_cholesterol', 'heart_disease',
+            'asthma', 'athritis', 'depression', 'anxiety', 'sleep_apnea',
             'thyroid_issue', 'current_medication'
         ];
         $medicalData = collect($validated)->only($medicalFields)->toArray();
@@ -94,9 +95,12 @@ class UserProfileController extends Controller
 
         $fullUser = User::with(['profile', 'medicalHistory'])->find($user->id);
 
-        $fullImageUrl = $fullUser->profile && $fullUser->profile->image 
-            ? asset('storage/' . $fullUser->profile->image) 
+        $fullImageUrl = $fullUser->profile && $fullUser->profile->image
+            ? asset('storage/' . $fullUser->profile->image)
             : null;
+
+        $user->notify(new InsightNotification('AI Insight', 'New AI Insight available','insight_msg'));
+
 
         return response()->json([
             'success' => true,
