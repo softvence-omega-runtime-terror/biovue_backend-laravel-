@@ -24,6 +24,7 @@ return new class extends Migration
             $table->string('location')->nullable(); 
             $table->boolean('agreed_terms')->default(false); 
             $table->string('image')->nullable();
+            $table->string('current_image')->nullable();
 
             // Health Metrics 
             $table->boolean('smoking_status')->nullable(); 

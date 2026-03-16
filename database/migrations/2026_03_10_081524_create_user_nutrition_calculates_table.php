@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('user_nutrition_calculates', function (Blueprint $table) {
             $table->id();
-           $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->date('log_date')->nullable();
             // Foods JSON column
             $table->json('foods')->nullable();
 
