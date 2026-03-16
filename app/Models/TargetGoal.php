@@ -9,7 +9,7 @@ class TargetGoal extends Model
     protected $fillable = [
         'user_id', 'target_weight', 'weekly_workout_goal', 
         'daily_step_goal', 'sleep_target', 'water_target', 'is_active', 
-        'start_date', 'end_date'
+        'start_date', 'end_date', 'profession_id'
     ];
 
     public function user()
