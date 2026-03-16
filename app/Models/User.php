@@ -33,7 +33,7 @@ class User extends Authenticatable
         'status',
         'plan_id',
         'user_type',
-        'profession_type'
+        'profession_type',
     ];
 
     /**

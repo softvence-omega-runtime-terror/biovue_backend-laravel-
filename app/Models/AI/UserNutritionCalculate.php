@@ -13,6 +13,7 @@ class UserNutritionCalculate extends Model
 
     protected $fillable = [
         'user_id',
+        'log_date',
         'foods',
         'calories_value',
         'calories_unit',

@@ -739,7 +739,6 @@ class UserController extends Controller
     {
         try {
             $loggedInUser = auth()->user();
-            
             $targetId = $userId ?: $loggedInUser->id;
 
             if ($targetId != $loggedInUser->id) {
@@ -758,31 +757,45 @@ class UserController extends Controller
             $endDate = now()->endOfDay();
 
             $userData = \App\Models\User::with(['profile', 'targetGoals', 'adjustProgram'])->find($targetId);
-            
             if (!$userData) return response()->json(['success' => false, 'message' => 'User not found'], 404);
 
-            $activity = DB::table('activity_logs')->where('user_id', $targetId)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
-            $sleep = DB::table('sleep_logs')->where('user_id', $targetId)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
-            $nutrition = DB::table('nutrition_logs')->where('user_id', $targetId)->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+            $activity = DB::table('activity_logs')
+                ->where('user_id', $targetId)
+                ->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])
+                ->get();
+
+            $sleep = DB::table('sleep_logs')
+                ->where('user_id', $targetId)
+                ->whereBetween('log_date', [$startDate->toDateString(), $endDate->toDateString()])
+                ->get();
+
+            $nutrition = DB::table('user_nutrition_calculates')
+                ->where('user_id', $targetId)
+                ->whereBetween('log_date', [$startDate->toDateTimeString(), $endDate->toDateTimeString()])
+                ->get();
 
             $chartData = [];
             $period = \Carbon\CarbonPeriod::create($startDate, $endDate);
 
             foreach ($period as $date) {
-                $formattedDate = $date->toDateString();
+                $formattedDate = $date->toDateString(); 
+                
                 $actLog = $activity->where('log_date', $formattedDate)->first();
                 $slpLog = $sleep->where('log_date', $formattedDate)->first();
-                $nutLog = $nutrition->where('log_date', $formattedDate)->first();
+                
+                $nutLog = $nutrition->filter(function($item) use ($formattedDate) {
+                    return date('Y-m-d', strtotime($item->log_date)) == $formattedDate;
+                })->first();
 
                 $chartData[] = [
-                    'label' => $daysCount <= 7 ? $date->format('D') : $date->format('D'),
+                    'label' => $date->format('D'), 
                     'weight' => $actLog ? (float)$actLog->weight : null,
                     'steps' => $actLog ? (int)$actLog->daily_steps : 0,
                     'sleep_hours' => $slpLog ? (float)$slpLog->sleep_hours : 0,
                     'nutrition' => [
-                        'protein' => $nutLog ? (int)$nutLog->protein_servings : 0,
-                        'carbs' => $nutLog ? (int)$nutLog->carb_quality : 0,
-                        'fats' => $nutLog ? (int)$nutLog->fat_sources : 0,
+                        'protein' => $nutLog ? (float)$nutLog->protein_value : 0,
+                        'carbs'   => $nutLog ? (float)$nutLog->carbs_value : 0,
+                        'fats'    => $nutLog ? (float)$nutLog->fat_value : 0,
                     ]
                 ];
             }
@@ -810,7 +823,6 @@ class UserController extends Controller
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
-
     private function calcConsist($title, $logs, $days, $target, $col = 'sleep_hours')
     {
         $count = $logs->count();

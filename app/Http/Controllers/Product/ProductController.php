@@ -14,10 +14,10 @@ class ProductController extends Controller
     {
         $user = auth()->user();
 
-        if ($user->user_type !== 'professional' || $user->profession_type !== 'supplement_supplier') {
+        if ($user->user_type !== 'professional' || !in_array($user->profession_type, ['supplement_supplier', 'nutritionist'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized. Only supplement suppliers can create products.'
+                'message' => 'Unauthorized. Only supplement suppliers and nutritionists can create products.'
             ], 403);
         }
 
