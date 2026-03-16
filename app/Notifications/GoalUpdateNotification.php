@@ -7,7 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class ReminderNotification extends Notification
+class GoalUpdateNotification extends Notification
 {
     use Queueable;
 
@@ -38,5 +38,4 @@ class ReminderNotification extends Notification
             'type' => $this->type,
         ];
     }
-
 }

@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 
 use App\Models\TargetGoal;
 use App\Models\User;
+use App\Notifications\GoalUpdateNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,7 @@ class TargetGoalController extends Controller
 {
     public function storeOrUpdate(Request $request)
     {
-        $authUserId = Auth::id(); 
+        $authUserId = Auth::id();
         $authUser = Auth::user();
 
         if ($authUser->user_type !== 'professional' || $authUser->profession_type !== 'trainer_coach') {
@@ -47,6 +48,8 @@ class TargetGoalController extends Controller
             'url' => '/goals'
         ]);
 
+        $client->notify(new GoalUpdateNotification('new Goal Set','Your coach has updated your fitness targets.','goal_message'));
+
         return response()->json([
             'success' => true,
             'message' => 'Target goals updated successfully for the client',
@@ -58,7 +61,7 @@ class TargetGoalController extends Controller
 {
     try {
         $loggedInUser = auth()->user();
-        
+
         $targetId = $userId ?: $loggedInUser->id;
 
         if ($targetId != $loggedInUser->id) {
@@ -69,7 +72,7 @@ class TargetGoalController extends Controller
 
             if (!$isConnected && $loggedInUser->user_type !== 'admin') {
                 return response()->json([
-                    'success' => false, 
+                    'success' => false,
                     'message' => 'Unauthorized: You are not connected to this client.'
                 ], 403);
             }
@@ -86,7 +89,7 @@ class TargetGoalController extends Controller
 
     } catch (\Exception $e) {
         return response()->json([
-            'success' => false, 
+            'success' => false,
             'error'   => $e->getMessage()
         ], 500);
     }
@@ -112,7 +115,7 @@ class TargetGoalController extends Controller
     }
 
     if ($isOwner || $isConnectedTrainer) {
-        
+
         $validated = $request->validate([
             'target_weight'       => 'nullable|numeric|between:0,999.99',
             'weekly_workout_goal' => 'nullable|integer|min:1|max:7',

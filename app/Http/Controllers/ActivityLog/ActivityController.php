@@ -4,6 +4,7 @@ namespace App\Http\Controllers\ActivityLog;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
+use App\Notifications\ReminderNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -18,28 +19,32 @@ class ActivityController extends Controller
             ->get();
     }
 
-    public function store(Request $request) 
-    { 
-        $validated = $request->validate([ 
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
             'id'            => 'nullable|exists:activity_logs,id',
             'log_date'      => 'required|date',
-            'weight'        => 'nullable|numeric|min:0', 
-            'daily_steps'   => 'nullable|integer|min:0', 
-            'sleep_hours'   => 'nullable|numeric|min:0|max:24', 
-            'water_glasses' => 'nullable|integer|min:0', 
-        ]); 
+            'weight'        => 'nullable|numeric|min:0',
+            'daily_steps'   => 'nullable|integer|min:0',
+            'sleep_hours'   => 'nullable|numeric|min:0|max:24',
+            'water_glasses' => 'nullable|integer|min:0',
+        ]);
 
         $activity = ActivityLog::updateOrCreate(
             [
                 'user_id'  => Auth::id(),
-                'id' => $request->id ?? null, 
+                'id' => $request->id ?? null,
                 'log_date' => $validated['log_date']
-            ], 
+            ],
             $validated
-        ); 
+        );
+
+        $user = Auth::user();
 
         $status = $activity->wasRecentlyCreated ? 201 : 200;
         $message = $activity->wasRecentlyCreated ? 'Activity log created.' : 'Activity log updated.';
+
+        $user->notify(new ReminderNotification('New Logs', 'Logs Added on '.$request->log_date .' ','reminder_message'));
 
         return response()->json([
             'success' => true,
@@ -91,10 +96,10 @@ class ActivityController extends Controller
     public function getActivityReport(Request $request, $userId = null)
     {
         $id = $userId ?: auth()->id();
-        $days = (int) $request->query('days', 7); 
+        $days = (int) $request->query('days', 7);
 
         if (!in_array($days, [7, 15, 30, 90])) {
-            $days = 7; 
+            $days = 7;
         }
 
         $endDate = Carbon::today();
@@ -124,7 +129,7 @@ class ActivityController extends Controller
         for ($date = $startDate->copy(); $date <= $endDate; $date->addDay()) {
             $dateString = $date->format('Y-m-d');
             $steps = isset($logs[$dateString]) ? (int)$logs[$dateString]->daily_steps : 0;
-            
+
             $chartData[] = [
                 'label' => $days > 15 ? $date->format('d M') : $date->format('D'),
                 'steps' => $steps,
@@ -134,9 +139,9 @@ class ActivityController extends Controller
             if($steps > 0) $daysWithData++;
         }
 
-        $totalSteps = $logs->sum('daily_steps'); 
+        $totalSteps = $logs->sum('daily_steps');
         $averageSteps = ($days > 0) ? ($totalSteps / $days) : 0;
-        
+
         $consistencyScore = ($days > 0) ? ($daysWithData / $days) * 100 : 0;
 
         return response()->json([
@@ -148,10 +153,10 @@ class ActivityController extends Controller
                     'average_steps' => number_format(round($averageSteps)) . " Steps",
                     'steps_target' => number_format($stepsTarget) . " Steps",
                     'consistency' => round($consistencyScore) . "%",
-                    'best_streak' => $this->calculateStreak($id) . " DAYS", 
-                    'current_trend' => $this->getTrendStatus($chartData),   
+                    'best_streak' => $this->calculateStreak($id) . " DAYS",
+                    'current_trend' => $this->getTrendStatus($chartData),
                 ],
-                'profession_notes' => $notes 
+                'profession_notes' => $notes
             ]
         ]);
     }
