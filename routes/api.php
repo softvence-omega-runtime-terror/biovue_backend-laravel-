@@ -124,7 +124,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/projection-future-goal/latest/{user_id}', [ProjectionFutureGoalController::class, 'showLatest']);
 
 
-        
+
         //Recommendation
         Route::get('recommend/professionals/{user_id}', [RecommendationController::class, 'index']);
          Route::get('/trainer-recommended-users/{trainer_id}', [RecommendationController::class, 'trainerUsers']);
@@ -285,6 +285,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/notifications/mark-read/{id}', [ProgramsSetController::class, 'markRead']);
 
         Route::get('/notification-list-by-user',[NotificationController::class, 'notificationListByUser']);
+        Route::get('/all-notification-mark-as-read',[NotificationController::class, 'markAsRead']);
 
         Route::get('supplyer-dashboard',[SupplyerController::class,'index']);
         Route::get('all-users-for-supplyer', [SupplyerController::class, 'userIndex']);

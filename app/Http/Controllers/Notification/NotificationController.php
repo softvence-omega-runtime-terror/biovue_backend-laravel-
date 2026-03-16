@@ -69,4 +69,25 @@ class NotificationController extends Controller
         }
 
     }
+
+    public function markAsRead(Request $request)
+    {
+        try {
+            $user = $request->user();
+
+            $user->unreadNotifications->markAsRead();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'All notifications marked as read',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Notifications mark as read:' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+            ]);
+        }
+    }
+
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\TargetGoal;
 use App\Models\User;
 use App\Notifications\GoalUpdateNotification;
+use App\Notifications\MilestoneNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -113,6 +114,8 @@ class TargetGoalController extends Controller
             ->where('user_id', $goal->user_id)
             ->exists();
     }
+
+    $loggedInUser->notify(new MilestoneNotification('New Milestone', 'Your target Is Complete','milestone_message'));
 
     if ($isOwner || $isConnectedTrainer) {
 
