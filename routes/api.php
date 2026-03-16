@@ -135,6 +135,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('profile/{userId}', [UserProfileController::class, 'showByUserId']);
         Route::post('profile', [UserProfileController::class, 'storeAndUpdate']);
+        Route::post('user/update-current-image', [UserProfileController::class, 'updateCurrentImage']);
         Route::get('users', [UserController::class, 'index']);
         Route::get('user-reports', [UserController::class, 'getUserReport']);
         Route::get('log-reports', [UserController::class, 'getLogReport']);

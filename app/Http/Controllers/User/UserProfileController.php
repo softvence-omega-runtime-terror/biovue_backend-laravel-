@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\UserMedicalHistory;
 use App\Models\UserProfile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class UserProfileController extends Controller
 {
@@ -73,7 +74,7 @@ class UserProfileController extends Controller
         if ($request->hasFile('image')) {
             $oldProfile = UserProfile::where('user_id', $validated['user_id'])->first();
             if ($oldProfile && $oldProfile->image) {
-                \Storage::disk('public')->delete($oldProfile->image);
+                Storage::disk('public')->delete($oldProfile->image);
             }
             $validated['image'] = $request->file('image')->store('profiles', 'public');
         }
@@ -132,5 +133,44 @@ class UserProfileController extends Controller
             'success' => true,
             'message' => 'Profile deleted successfully'
         ]);
+    }
+
+
+    public function updateCurrentImage(Request $request)
+    {
+        $request->validate([
+            'current_image' => 'required|image|mimes:jpeg,png,jpg,webp|max:10240', 
+        ]);
+
+        try {
+            $user = auth()->user();
+            
+            $profile = UserProfile::firstOrNew(['user_id' => $user->id]);
+
+            if ($request->hasFile('current_image')) {
+                if ($profile->current_image && Storage::disk('public')->exists($profile->current_image)) {
+                    Storage::disk('public')->delete($profile->current_image);
+                }
+
+                $file = $request->file('current_image');
+                $fileName = 'current_' . time() . '_' . $user->id . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('projections/current_lifestyle', $fileName, 'public');
+
+                $profile->current_image = $path;
+                $profile->save();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Current lifestyle image updated successfully!',
+                    'image_url' => asset('storage/' . $path)
+                ], 200);
+            }
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Update failed: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
