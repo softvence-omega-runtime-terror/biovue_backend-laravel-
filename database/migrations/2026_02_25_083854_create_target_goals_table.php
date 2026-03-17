@@ -20,7 +20,7 @@ return new class extends Migration
             $table->unsignedMediumInteger('daily_step_goal')->nullable();
             $table->decimal('sleep_target', 4, 2)->nullable();
             $table->unsignedTinyInteger('water_target')->nullable();
-            $table->boolean('is_active')->default(true); 
+            $table->boolean('is_active')->default(true);
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
 
