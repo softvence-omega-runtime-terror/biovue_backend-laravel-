@@ -90,4 +90,83 @@ class NotificationController extends Controller
         }
     }
 
+    public function markSingleAsRead(Request $request)
+    {
+        try {
+            $user = $request->user();
+
+            $request->validate([
+                'notification_id' => 'required|exists:notifications,id',
+            ]);
+
+            $notification = $user->notifications()->where('id', $request->notification_id)->first();
+
+            if ($notification) {
+                $notification->markAsRead();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Notification marked as read',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Notification mark as read: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+            ]);
+        }
+    }
+
+    public function deleteAllNotifications(Request $request)
+    {
+        try {
+            $user = $request->user();
+
+            $user->notifications()->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'All notifications deleted successfully',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Delete all notifications: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+            ]);
+        }
+    }
+
+    public function deleteSingleNotification(Request $request)
+    {
+        try {
+            $user = $request->user();
+
+            $request->validate([
+                'notification_id' => 'required|exists:notifications,id',
+            ]);
+
+            $notification = $user->notifications()->where('id', $request->notification_id)->first();
+
+            if ($notification) {
+                $notification->delete();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Notification deleted successfully',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Notification delete: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+            ]);
+        }
+    }
+
 }
