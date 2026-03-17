@@ -26,7 +26,7 @@ class UserHabitUpdateController extends Controller
             // Timeout 120 sec + SSL bypass for dev
             $response = Http::timeout(120)
                             ->withoutVerifying()
-                            ->get('https://biovue-ai.onrender.com/api/v1/habits/update/', [
+                            ->get('https://ai.biovuedigitalwellness.com/api/v1/habits/update/', [
                                 'user_id' => $userId
                             ]);
 

@@ -43,7 +43,7 @@ class InsightController extends Controller
                 'verify' => $verifySSL,
                 'timeout' => 120,  // 120 seconds
             ])->retry(3, 2000)  // 3 retries, 2 sec interval
-            ->post('https://biovue-ai.onrender.com/api/v1/insights/current', [
+            ->post('https://ai.biovuedigitalwellness.com/api/v1/insights/current', [
                 'user_id' => (string) $userId
             ]);
 
@@ -99,7 +99,7 @@ public function showUserInsights(Request $request)
 {
     try {
         // Ensure user is logged in
-        $user = $request->user(); // অথবা auth()->user() use করা যাবে
+        $user = $request->user(); 
 
         if (!$user) {
             return response()->json([

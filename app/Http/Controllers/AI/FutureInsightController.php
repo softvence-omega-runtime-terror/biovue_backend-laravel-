@@ -38,7 +38,7 @@ class FutureInsightController extends Controller
             // HTTP POST to external API
             $response = Http::timeout(120)
                 ->retry(3, 2000)
-                ->post('https://biovue-ai.onrender.com/api/v1/insights/future', [
+                ->post('https://ai.biovuedigitalwellness.com/api/v1/insights/future', [
                     'user_id'   => (string)$userId,
                     'timeframe' => $timeframe
                 ]);
