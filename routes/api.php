@@ -286,6 +286,9 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/notification-list-by-user',[NotificationController::class, 'notificationListByUser']);
         Route::get('/all-notification-mark-as-read',[NotificationController::class, 'markAsRead']);
+        Route::post('/mark-single-as-read',[NotificationController::class, 'markSingleAsRead']);
+        Route::post('/delete-single-notification',[NotificationController::class, 'deleteSingleNotification']);
+        Route::post('/delete-all-notification',[NotificationController::class, 'deleteAllNotifications']);
 
         Route::get('supplyer-dashboard',[SupplyerController::class,'index']);
         Route::get('all-users-for-supplyer', [SupplyerController::class, 'userIndex']);
