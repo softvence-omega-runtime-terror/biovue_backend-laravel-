@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('target_goals', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->index()->constrained()->onDelete('cascade');
-            $table->foreigmnId('profession_id')->index()->constrained('users')->onDelete('cascade');
+            $table->foreignId('profession_id')->index()->constrained('users')->onDelete('cascade');
             $table->decimal('target_weight', 5, 2)->nullable();
             $table->unsignedTinyInteger('weekly_workout_goal')->comment('5 Days per week')->nullable();
             $table->unsignedMediumInteger('daily_step_goal')->nullable();
