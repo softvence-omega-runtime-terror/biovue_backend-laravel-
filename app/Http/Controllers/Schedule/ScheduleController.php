@@ -77,26 +77,47 @@ class ScheduleController extends Controller
     //     }
     // }
 
-    public function storeSchedule(Request $request)
+    public function storeOrUpdateSchedule(Request $request)
     {
         $validated = $request->validate([
-            'client_id' => 'required|exists:users,id',
-            'date' => 'required|date',
-            'time' => 'required',
+            'id'            => 'nullable|exists:schedules,id',
+            'client_id'     => 'required|exists:users,id',
+            'date'          => 'required|date',
+            'time'          => 'required',
             'check_in_type' => 'required|string',
-            'private_note' => 'nullable|string'
+            'private_note'  => 'nullable|string',
+            'status'        => 'nullable|in:scheduled,completed,missed'
         ]);
 
-        $schedule = Schedule::create([
-            'trainer_id' => auth()->id(),
-            'client_id' => $validated['client_id'],
-            'schedule_date' => $validated['date'],
-            'schedule_time' => $validated['time'],
-            'check_in_type' => $validated['check_in_type'],
-            'private_note' => $validated['private_note']
-        ]);
+        try {
+            $schedule = Schedule::updateOrCreate(
+                ['id' => $request->id], 
+                [
+                    'trainer_id'    => auth()->id(),
+                    'client_id'     => $validated['client_id'],
+                    'schedule_date' => $validated['date'],
+                    'schedule_time' => $validated['time'],
+                    'check_in_type' => $validated['check_in_type'],
+                    'private_note'  => $validated['private_note'],
+                    'status'        => $validated['status'] ?? 'scheduled'
+                ]
+            );
 
-        return response()->json(['message' => 'Check-in scheduled successfully']);
+            $message = $request->id ? 'Schedule updated successfully' : 'Check-in scheduled successfully';
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data'    => $schedule
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong!',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function sendReminder(Request $request)
