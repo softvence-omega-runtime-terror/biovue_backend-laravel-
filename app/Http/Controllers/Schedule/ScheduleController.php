@@ -24,10 +24,10 @@ class ScheduleController extends Controller
                 $q->select('user_id', 'image');
             }]);
         }])
-        ->whereBetween('schedule_date', [
-            Carbon::parse($date)->startOfWeek(),
-            Carbon::parse($date)->endOfWeek()
-        ])
+        // ->whereBetween('schedule_date', [
+        //     Carbon::parse($date)->startOfWeek(),
+        //     Carbon::parse($date)->endOfWeek()
+        // ])
         ->get();
 
         return response()->json([
