@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ProgramSet extends Model
 {
-    use HasFactory, SoftDeletes; // Soft delete support
+    use HasFactory, SoftDeletes;
 
     protected $table = 'programs_sets';
 
-        protected $fillable = [
+    protected $fillable = [
+        'profession_id', // ✅ MUST ADD THIS
         'name',
         'duration',
         'primary_goal',
@@ -42,10 +43,24 @@ class ProgramSet extends Model
         'weekly_targets' => 'array',
     ];
 
+    /**
+     * Program belongs to a profession (trainer/user)
+     */
+    public function profession()
+    {
+        return $this->belongsTo(User::class, 'profession_id');
+    }
 
-   // ProgramSet.php
-public function users()
-{
-    return $this->belongsToMany(User::class, 'connect_to_professions');
-}
+    /**
+     * Many users assigned to this program
+     */
+    public function users()
+    {
+        return $this->belongsToMany(
+            User::class,
+            'connect_to_professions',
+            'program_set_id',
+            'user_id'
+        );
+    }
 }

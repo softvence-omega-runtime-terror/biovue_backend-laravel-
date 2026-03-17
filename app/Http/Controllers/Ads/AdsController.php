@@ -85,44 +85,43 @@ class AdsController extends Controller
 
 
     public function destroy($id)
-    {
-        try {
-            $ad = AdsSetting::find($id);
+{
+    try {
+        // ১. আইডি দিয়ে অ্যাডটি খুঁজে বের করা
+        $ad = AdsSetting::find($id);
 
-            if (!$ad) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ad not found with the provided ID.'
-                ], 404);
-            }
-
-            if (!auth()->check() || strcasecmp(auth()->user()->role, 'Admin') !== 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized action. Only admins can delete ads.'
-                ], 403);
-            }
-
-            $imagePath = $ad->getRawOriginal('image');
-            if ($imagePath && Storage::disk('public')->exists($imagePath)) {
-                Storage::disk('public')->delete($imagePath);
-            }
-
-            $ad->delete();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Ad deleted successfully.'
-            ], 200);
-
-        } catch (\Exception $e) {
+        // ২. যদি অ্যাড না পাওয়া যায়
+        if (!$ad) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error occurred',
-                'error' => $e->getMessage() 
-            ], 500);
+                'message' => 'Ad not found with the provided ID.'
+            ], 404);
         }
+
+        // ৩. স্টোরেজ থেকে ইমেজ ডিলিট করা
+        // getRawOriginal ব্যবহার করা হয়েছে যাতে Accessor এর কারণে পাথে সমস্যা না হয়
+        $imagePath = $ad->getRawOriginal('image');
+        
+        if ($imagePath && \Storage::disk('public')->exists($imagePath)) {
+            \Storage::disk('public')->delete($imagePath);
+        }
+
+        // ৪. ডাটাবেস থেকে রেকর্ডটি ডিলিট করা
+        $ad->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Ad deleted successfully along with its image.'
+        ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Something went wrong!',
+            'error' => $e->getMessage() 
+        ], 500);
     }
+}
 
     public function toggleStatus($id)
     {
