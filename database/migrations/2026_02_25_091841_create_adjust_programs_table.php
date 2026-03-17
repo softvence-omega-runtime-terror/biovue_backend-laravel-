@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('adjust_programs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade'); 
+            $table->foreignId('profession_id')->constrained('users')->onDelete('cascade'); 
             $table->integer('target_weight')->nullable(); 
             $table->string('weekly_workouts')->nullable(); 
             $table->string('sleep_target_range')->nullable(); 
