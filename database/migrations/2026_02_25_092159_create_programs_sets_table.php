@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('programs_sets', function (Blueprint $table) {
                 $table->id();
+                $table->foreignId('profession_id')->constrained('users')->onDelete('cascade');
                 $table->string('name')->nullable(); 
                 $table->integer('duration')->nullable();
                 $table->string('primary_goal')->nullable();
