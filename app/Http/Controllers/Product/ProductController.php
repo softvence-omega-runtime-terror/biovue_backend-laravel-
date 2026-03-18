@@ -51,11 +51,20 @@ class ProductController extends Controller
     {
         $user = auth()->user();
 
-        if ($user->user_type === 'professional' && $user->profession_type === 'supplement_supplier') {
+        if ($user && $user->user_type === 'professional' && $user->profession_type === 'supplement_supplier') {
             $products = Product::where('supplier_id', $user->id)->get();
         } else {
             $products = Product::where('status', 'published')->get();
         }
+
+        $products->map(function ($product) {
+            if ($product->image) {
+                $product->image = str_starts_with($product->image, 'http') 
+                    ? $product->image 
+                    : asset('storage/' . $product->image);
+            }
+            return $product;
+        });
 
         return response()->json([
             'success' => true,
