@@ -183,7 +183,7 @@ class UserProfileController extends Controller
         try {
             $user = auth()->user();
             
-            $profile = \App\Models\UserProfile::where('user_id', $user->id)->first();
+            $profile = UserProfile::where('user_id', $user->id)->first();
 
             if (!$profile || !$profile->current_image) {
                 return response()->json([
@@ -197,6 +197,7 @@ class UserProfileController extends Controller
 
             return response()->json([
                 'success' => true,
+                'name' => $user->name,
                 'image_url' => $imageUrl
             ], 200);
 
