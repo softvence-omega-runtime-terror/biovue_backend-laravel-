@@ -136,6 +136,15 @@ Route::prefix('v1')->group(function () {
         Route::get('profile/{userId}', [UserProfileController::class, 'showByUserId']);
         Route::post('profile', [UserProfileController::class, 'storeAndUpdate']);
         Route::post('user/update-current-image', [UserProfileController::class, 'updateCurrentImage']);
+        Route::get('user/current-image', [UserProfileController::class, 'getCurrentImage']);
+
+         Route::get('users/individuals', [UserController::class, 'individualUsers']);
+         Route::get('users/professionals', [UserController::class, 'professionalUsers']);
+
+         Route::get('/goals', [TargetGoalController::class, 'getGoal']);
+         Route::post('/goals', [TargetGoalController::class, 'storeOrUpdate']);
+         Route::post('/goals/{id}', [TargetGoalController::class, 'update']);
+         Route::get('/get-goal/{userId?}', [TargetGoalController::class, 'getGoal']);
         Route::get('users', [UserController::class, 'index']);
         Route::get('user-reports', [UserController::class, 'getUserReport']);
         Route::get('log-reports', [UserController::class, 'getLogReport']);

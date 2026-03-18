@@ -177,4 +177,34 @@ class UserProfileController extends Controller
             ], 500);
         }
     }
+
+    public function getCurrentImage()
+    {
+        try {
+            $user = auth()->user();
+            
+            $profile = \App\Models\UserProfile::where('user_id', $user->id)->first();
+
+            if (!$profile || !$profile->current_image) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No lifestyle image found.',
+                    'image_url' => null
+                ], 404);
+            }
+
+            $imageUrl = asset('storage/' . $profile->current_image);
+
+            return response()->json([
+                'success' => true,
+                'image_url' => $imageUrl
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
