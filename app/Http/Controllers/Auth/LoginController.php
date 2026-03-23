@@ -61,7 +61,7 @@ class LoginController extends Controller
                     'role' => $user->getRoleNames()->first() ?? null,
                     'plan_id' => $user->plan_id,
                     'plan_name' => $user->plan->name?? null,
-                    'plan_duration' => $user->plan->duration?? null,
+                    'plan_duration' => $this->getPlanDuration($user),
                      'user_type' => $user->user_type ?? null,          // <-- added
                     'profession_type' => $user->profession_type ?? null, // <-- added
                    
@@ -93,6 +93,50 @@ class LoginController extends Controller
 }
 
 
+
+
+
+
+/**
+ * Protected helper to calculate remaining plan duration (in days)
+ */
+protected function getPlanDuration($user)
+{
+    $plan = $user->plan;
+    if (!$plan) return null;
+
+    // ✅ Get latest successful payment for this plan
+    $latestPayment = $user->planPayments()
+                          ->where('plan_id', $plan->id)
+                          ->where('status', 'paid')
+                          ->latest()
+                          ->first();
+
+    if (!$latestPayment) return null;
+
+    $startDate = $latestPayment->created_at; // subscription start
+    $durationDays = 0;
+
+    switch ($plan->billing_cycle) {
+        case 'days':
+            $durationDays = $plan->duration ?? 0;
+            break;
+        case 'monthly':
+            $durationDays = 30;
+            break;
+        case 'annual':
+            $durationDays = 365;
+            break;
+        default:
+            $durationDays = $plan->duration ?? 0;
+            break;
+    }
+
+    $endDate = $startDate->copy()->addDays($durationDays);
+    $remainingDays = now()->diffInDays($endDate, false);
+
+    return $remainingDays > 0 ? $remainingDays : 0; // remaining active days
+}
 
  public function resendOtp(Request $request)
 {
