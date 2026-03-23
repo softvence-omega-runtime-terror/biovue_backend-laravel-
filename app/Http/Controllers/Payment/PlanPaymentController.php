@@ -206,7 +206,7 @@ public function processPayment(Request $request)
             // 'cancel_url'  => url('/api/v1/payment/cancel'),
 
 
-            'success_url' => 'https://biovue-frontend.vercel.app/payment/show?session_id={CHECKOUT_SESSION_ID}',
+            'success_url' => 'https://biovuedigitalwellness.com/payment/show?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url'  => url('/api/v1/payment/cancel'),
         ]);
 
