@@ -43,6 +43,7 @@ use App\Http\Controllers\AI\ProjectionFutureGoalController;
 use App\Http\Controllers\AI\RecommendationController;
 use App\Http\Controllers\AI\UserHabitUpdateController;
 use App\Http\Controllers\AI\UserNutritionCalculateController;
+use App\Http\Controllers\Partner\PartnerController;
 
 Route::prefix('v1')->group(function () {
 
@@ -116,7 +117,6 @@ Route::prefix('v1')->group(function () {
          Route::post('/projection-lifestyle', [ProjectionLifestyleController::class, 'store']);
          // projection-lifestyle latest
        Route::get('/projection-lifestyle/latest/{user_id}', [ProjectionLifestyleController::class, 'showLatest']);
-        Route::post('/projection/generate', [ProjectionLifestyleController::class, 'generateProjection']);
 
         //Projection goal
         Route::post('/projection-future-goal', [ProjectionFutureGoalController::class, 'store']);
@@ -301,6 +301,8 @@ Route::prefix('v1')->group(function () {
 
         Route::get('supplyer-dashboard',[SupplyerController::class,'index']);
         Route::get('all-users-for-supplyer', [SupplyerController::class, 'userIndex']);
+    
+        Route::apiResource('partners', PartnerController::class);
     });
 
 
