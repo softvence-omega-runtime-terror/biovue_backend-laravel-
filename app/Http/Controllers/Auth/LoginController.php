@@ -49,6 +49,8 @@ class LoginController extends Controller
         $profileStatus = $user->profile()->exists() ? 'Your profile is complete.' : 'Your profile is incomplete. Please complete your profile to access all features.';
         // ✅ Generate token
         $token = $user->createToken('auth_token_' . $user->id)->plainTextToken;
+        // ✅ Get plan duration in integer days
+        $planDuration = $this->getPlanDuration($user);
 
         // ✅ Return success response
         return response()->json([
