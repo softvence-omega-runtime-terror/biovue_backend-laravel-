@@ -61,7 +61,7 @@ class LoginController extends Controller
                     'role' => $user->getRoleNames()->first() ?? null,
                     'plan_id' => $user->plan_id,
                     'plan_name' => $user->plan->name?? null,
-                    'plan_duration' => $this->getPlanDuration($user),
+                    'plan_duration' => $planDuration, // integer days
                      'user_type' => $user->user_type ?? null,          // <-- added
                     'profession_type' => $user->profession_type ?? null, // <-- added
                    
@@ -117,9 +117,10 @@ protected function getPlanDuration($user)
     $startDate = $latestPayment->created_at; // subscription start
     $durationDays = 0;
 
+    // ✅ Determine plan duration based on billing cycle
     switch ($plan->billing_cycle) {
         case 'days':
-            $durationDays = $plan->duration ?? 0;
+            $durationDays = (int)($plan->duration ?? 0);
             break;
         case 'monthly':
             $durationDays = 30;
@@ -128,16 +129,22 @@ protected function getPlanDuration($user)
             $durationDays = 365;
             break;
         default:
-            $durationDays = $plan->duration ?? 0;
+            $durationDays = (int)($plan->duration ?? 0);
             break;
     }
 
     $endDate = $startDate->copy()->addDays($durationDays);
     $remainingDays = now()->diffInDays($endDate, false);
 
-    return $remainingDays > 0 ? $remainingDays : 0; // remaining active days
+    return $remainingDays > 0 ? (int)$remainingDays : 0; // integer
 }
 
+
+
+
+
+
+//resend otp
  public function resendOtp(Request $request)
 {
     try {
