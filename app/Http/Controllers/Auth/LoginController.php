@@ -107,7 +107,7 @@ protected function getPlanDuration($user)
     $plan = $user->plan;
     if (!$plan) return null;
 
-    // ✅ Get latest successful payment for this plan
+    // Get latest successful payment for this plan
     $latestPayment = $user->planPayments()
                           ->where('plan_id', $plan->id)
                           ->where('status', 'paid')
@@ -116,11 +116,14 @@ protected function getPlanDuration($user)
 
     if (!$latestPayment) return null;
 
-    $startDate = $latestPayment->created_at; // subscription start
+    $startDate = $latestPayment->created_at;
+
+    // Use the billing from payment metadata
+    $billing = $latestPayment->billing ?? $plan->billing_cycle;
+
     $durationDays = 0;
 
-    // ✅ Determine plan duration based on billing cycle
-    switch ($plan->billing_cycle) {
+    switch ($billing) {
         case 'days':
             $durationDays = (int)($plan->duration ?? 0);
             break;
@@ -138,11 +141,8 @@ protected function getPlanDuration($user)
     $endDate = $startDate->copy()->addDays($durationDays);
     $remainingDays = now()->diffInDays($endDate, false);
 
-    return $remainingDays > 0 ? (int)$remainingDays : 0; // integer
+    return $remainingDays > 0 ? (int)$remainingDays : 0; // integer days
 }
-
-
-
 
 
 
