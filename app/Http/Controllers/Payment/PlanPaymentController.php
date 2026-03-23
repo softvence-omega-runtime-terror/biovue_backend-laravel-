@@ -140,27 +140,44 @@ class PlanPaymentController extends Controller
         }
     }
 
-    /**
- * Process payment (Stripe Checkout Session)
- */
-public function processPayment(Request $request)
+  public function processPayment(Request $request)
 {
     $request->validate([
         'plan_id' => 'required|exists:plans,id',
-        'billing' => 'required|in:monthly,annual', // add billing input
+        'billing' => 'required|in:monthly,annual', // monthly বা annual
     ]);
 
     $plan = Plan::findOrFail($request->plan_id);
     $user = auth()->user();
 
-    // Calculate final amount
-    $finalPrice = $plan->price; // default monthly
+    // ✅ Calculate final amount
+    $finalPrice = $plan->price;
     if ($request->billing === 'annual') {
-        $finalPrice = $plan->price * 12 * 0.9; // 12 months × 20% off
+        $finalPrice = $plan->price * 12 * 0.9; // 12 months × 10% discount
     }
 
+    // ✅ Calculate subscription duration in integer days
+    $durationDays = 0;
+    switch ($plan->billing_cycle) {
+        case 'days':
+            $durationDays = (int)($plan->duration ?? 0);
+            break;
+        case 'monthly':
+            $durationDays = 30;
+            break;
+        case 'annual':
+            $durationDays = 365;
+            break;
+        default:
+            $durationDays = (int)($plan->duration ?? 0);
+            break;
+    }
+
+    $startDate = now();
+    $endDate = $startDate->copy()->addDays($durationDays);
+
     try {
-        // Create temporary payment record
+        // ✅ Create temporary payment record
         $payment = PlanPayment::create([
             'user_id'        => $user->id,
             'plan_id'        => $plan->id,
@@ -168,9 +185,11 @@ public function processPayment(Request $request)
             'amount'         => $finalPrice,
             'currency'       => 'usd',
             'status'         => 'unpaid',
+            'start_date'     => $startDate,
+            'end_date'       => $endDate,
         ]);
 
-        // Free plan check
+        // ✅ Free plan check
         if ($finalPrice <= 0) {
             $payment->update(['status' => 'paid']);
             $user->update(['plan_id' => $plan->id]);
@@ -178,18 +197,19 @@ public function processPayment(Request $request)
             return response()->json([
                 'success' => true,
                 'message' => 'Free plan activated successfully.',
-                'amount'  => $finalPrice,
+                'amount' => $finalPrice,
+                'plan_duration_days' => $durationDays,
             ]);
         }
 
-        // Stripe Checkout Session
+        // ✅ Stripe Checkout Session
         $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
         $session = $stripe->checkout->sessions->create([
             'mode' => 'payment',
             'line_items' => [[
                 'price_data' => [
                     'currency'    => 'usd',
-                    'unit_amount' => (int)($finalPrice * 100),
+                    'unit_amount' => (int)($finalPrice * 100), // cents
                     'product_data' => [
                         'name' => $plan->name,
                         'description' => implode(", ", $plan->features ?? []),
@@ -200,26 +220,25 @@ public function processPayment(Request $request)
             'metadata' => [
                 'payment_id' => $payment->id,
                 'user_id'    => $user->id,
-                'billing'    => $request->billing, // optional
+                'billing'    => $request->billing,
             ],
-            // 'success_url' => url('/api/v1/payment/success') . '?session_id={CHECKOUT_SESSION_ID}',
-            // 'cancel_url'  => url('/api/v1/payment/cancel'),
-
-
-            'success_url' => 'https://biovue-frontend.vercel.app/payment/show?session_id={CHECKOUT_SESSION_ID}',
+            'success_url' => 'https://biovuedigitalwellness.com/payment/show?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url'  => url('/api/v1/payment/cancel'),
         ]);
 
+        // ✅ Update payment with Stripe session ID
         $payment->update(['transaction_id' => $session->id]);
 
         return response()->json([
-            'success'      => true,
+            'success' => true,
             'checkout_url' => $session->url,
             'session_id'   => $session->id,
             'amount'       => $finalPrice,
+            'plan_duration_days' => $durationDays, // integer
         ]);
 
     } catch (\Exception $e) {
+        \Log::error('Stripe Payment Error: ' . $e->getMessage());
         return response()->json([
             'success' => false,
             'message' => 'Stripe error: ' . $e->getMessage(),
