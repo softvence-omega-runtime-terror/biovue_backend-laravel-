@@ -76,11 +76,9 @@ Route::prefix('v1')->group(function () {
     Route::get('privacy-policy', [PrivacyPolicyController::class, 'show']);
     Route::post('/contact', [ContactController::class, 'store']);
 
-
-
     // Public Route: Get FAQs
     Route::get('/faqs', [FaqController::class, 'index']);
-
+    Route::get('getUserProjectionData/{userId}', [ProjectionFutureGoalController::class, 'getUserProjectionData']);
 
     // Stripe Webhook
         Route::post('payment/webhook', [PlanPaymentController::class, 'handleWebhook']);
@@ -124,9 +122,7 @@ Route::prefix('v1')->group(function () {
         //Projection goal
         Route::post('/projection-future-goal', [ProjectionFutureGoalController::class, 'store']);
 
-        Route::get('/projection-future-goal/latest/{user_id}', [ProjectionFutureGoalController::class, 'showLatest']);
-
-
+        Route::get('/projection-future-goal/latest/{user_id}', [ProjectionFutureGoalController::class, 'showLatest']);        
 
         //Recommendation
         Route::get('recommend/professionals/{user_id}', [RecommendationController::class, 'index']);
@@ -306,6 +302,8 @@ Route::prefix('v1')->group(function () {
         Route::get('all-users-for-supplyer', [SupplyerController::class, 'userIndex']);
     
         Route::apiResource('partners', PartnerController::class);
+
+        Route::get('getAiInputData/{userId}', [UserHabitUpdateController::class, 'getAiInputData']);
     });
 
 
