@@ -30,7 +30,7 @@ class StressController extends Controller
     {
         $validated = $request->validate([
             'log_date'     => 'required|date',
-            'stress_level' => 'nullable|integer|min:1|max:5',
+            'stress_level' => 'nullable|integer|min:1|max:10',
             'mood'         => 'nullable|in:motivated,normal,low,happy,sad,neutral,angry,anxious',
             'description'  => 'nullable|string',
         ]);

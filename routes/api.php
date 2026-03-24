@@ -73,6 +73,7 @@ Route::prefix('v1')->group(function () {
 
     // Public Route: Get Terms & Conditions
     Route::get('terms', [TermsAndConditionController::class, 'get']);
+    Route::get('privacy-policy', [PrivacyPolicyController::class, 'show']);
     Route::post('/contact', [ContactController::class, 'store']);
 
 
@@ -92,7 +93,7 @@ Route::prefix('v1')->group(function () {
     // ----------------------------
     Route::middleware('auth:sanctum')->group(function () {
 
-        Route::get('save-terms', [PrivacyPolicyController::class, 'save']);
+        Route::post('save-terms', [PrivacyPolicyController::class, 'save']);
 
         //AI INsight part
         Route::post('/change-password', [ForgotPasswordController::class, 'changePassword']);
