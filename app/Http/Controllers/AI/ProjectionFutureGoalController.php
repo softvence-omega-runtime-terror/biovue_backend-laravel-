@@ -3,8 +3,12 @@
 namespace App\Http\Controllers\AI;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use App\Models\AI\ProjectionFutureGoal;
+use App\Models\AI\UserNutritionCalculate;
+use App\Models\StressLog;
+use App\Models\UserProfile;
 
 class ProjectionFutureGoalController extends Controller
 {
@@ -93,5 +97,63 @@ class ProjectionFutureGoalController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+
+    public function getUserProjectionData(Request $request, $userId)
+    {
+        $startDate = $request->query('start_date', now()->subDays(90)->format('Y-m-d'));
+        $endDate = $request->query('end_date', now()->format('Y-m-d'));
+
+        $activities = \App\Models\ActivityLog::where('user_id', $userId)
+            ->whereBetween('log_date', [$startDate, $endDate])
+            ->get()
+            ->keyBy('log_date');
+
+        $nutrition = UserNutritionCalculate::where('user_id', $userId)
+            ->whereBetween('log_date', [$startDate, $endDate])
+            ->get()
+            ->keyBy('log_date');
+
+        $stress = \App\Models\StressLog::where('user_id', $userId)
+            ->whereBetween('log_date', [$startDate, $endDate])
+            ->get()
+            ->keyBy('log_date');
+
+        $hydration = \App\Models\HydrationLog::where('user_id', $userId)
+            ->whereBetween('log_date', [$startDate, $endDate])
+            ->get()
+            ->keyBy('log_date');
+
+        $profile = \App\Models\UserProfile::where('user_id', $userId)->first();
+        if (!$profile) return response()->json(['message' => 'Profile not found'], 404);
+
+        $processedData = [];
+        $period = \Carbon\CarbonPeriod::create($startDate, $endDate);
+
+        foreach ($period as $date) {
+            $formattedDate = $date->format('Y-m-d');
+            
+            $processedData[] = [
+                'date' => $formattedDate,
+                'weight' => $activities[$formattedDate]->weight ?? $profile->weight,
+                'height' => $profile->height,
+                'body_fat' => $profile[$formattedDate]->body_fat ?? null,
+                'steps' => $activities[$formattedDate]->daily_steps ?? 0,
+                'sleep_hours' => $activities[$formattedDate]->sleep_hours ?? 0,
+                'calories' => $nutrition[$formattedDate]->calories_value ?? 0,
+                'stress_level' => $stress[$formattedDate]->stress_level ?? 5,
+                'hydration_level' => $hydration[$formattedDate]->hydration_level ?? 0,
+                'is_athletic' => (bool)($profile->is_athletic),
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'user_id' => $userId,
+            'range' => ['from' => $startDate, 'to' => $endDate],
+            'dataset_count' => count($processedData),
+            'data' => $processedData
+        ]);
     }
 }

@@ -3,8 +3,13 @@
 namespace App\Http\Controllers\AI;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use App\Models\AI\UserHabitUpdate;
+use App\Models\AI\UserNutritionCalculate;
+use App\Models\StressLog;
+use App\Models\User;
+use App\Models\UserProfile;
 use Illuminate\Support\Facades\Http;
 
 class UserHabitUpdateController extends Controller
@@ -88,48 +93,81 @@ class UserHabitUpdateController extends Controller
         }
     }
 
-
-
-
     public function show($userId)
-{
-    $habit = UserHabitUpdate::where('user_id', $userId)->first();
+    {
+        $habit = UserHabitUpdate::where('user_id', $userId)->first();
 
-    if (!$habit) {
+        if (!$habit) {
+            return response()->json([
+                'message' => 'Habit data not found for this user'
+            ], 404);
+        }
+
         return response()->json([
-            'message' => 'Habit data not found for this user'
-        ], 404);
+            'focus_on_trends' => $habit->focus_on_trends,
+            'habits' => [
+                'sleep' => [
+                    'status' => $habit->sleep_status,
+                    'why_this_matters' => $habit->sleep_why_this_matters,
+                    'biovue_insights' => $habit->sleep_biovue_insights,
+                ],
+                'nutrition' => [
+                    'status' => $habit->nutrition_status,
+                    'why_this_matters' => $habit->nutrition_why_this_matters,
+                    'biovue_insights' => $habit->nutrition_biovue_insights,
+                ],
+                'activity' => [
+                    'status' => $habit->activity_status,
+                    'why_this_matters' => $habit->activity_why_this_matters,
+                    'biovue_insights' => $habit->activity_biovue_insights,
+                ],
+                'stress' => [
+                    'status' => $habit->stress_status,
+                    'why_this_matters' => $habit->stress_why_this_matters,
+                    'biovue_insights' => $habit->stress_biovue_insights,
+                ],
+                'hydration' => [
+                    'status' => $habit->hydration_status,
+                    'why_this_matters' => $habit->hydration_why_this_matters,
+                    'biovue_insights' => $habit->hydration_biovue_insights,
+                ],
+            ]
+        ]);
     }
 
-    return response()->json([
-        'focus_on_trends' => $habit->focus_on_trends,
-        'habits' => [
-            'sleep' => [
-                'status' => $habit->sleep_status,
-                'why_this_matters' => $habit->sleep_why_this_matters,
-                'biovue_insights' => $habit->sleep_biovue_insights,
-            ],
-            'nutrition' => [
-                'status' => $habit->nutrition_status,
-                'why_this_matters' => $habit->nutrition_why_this_matters,
-                'biovue_insights' => $habit->nutrition_biovue_insights,
-            ],
-            'activity' => [
-                'status' => $habit->activity_status,
-                'why_this_matters' => $habit->activity_why_this_matters,
-                'biovue_insights' => $habit->activity_biovue_insights,
-            ],
-            'stress' => [
-                'status' => $habit->stress_status,
-                'why_this_matters' => $habit->stress_why_this_matters,
-                'biovue_insights' => $habit->stress_biovue_insights,
-            ],
-            'hydration' => [
-                'status' => $habit->hydration_status,
-                'why_this_matters' => $habit->hydration_why_this_matters,
-                'biovue_insights' => $habit->hydration_biovue_insights,
-            ],
-        ]
-    ]);
-}
+    public function getAiInputData($userId)
+    {
+        return User::with(['profile', 'activityLogs', 'nutritionLogs', 'stressLogs', 'sleepLogs'])
+            ->where('id', $userId)
+            ->get()
+            ->map(function($user) {
+            return [
+                'demographics' => [
+                    'age' => $user->profile->age,
+                    'gender' => $user->profile->sex,
+                    'bmi' => $this->calculateBMI($user->profile->weight, $user->profile->height),
+                ],
+                'habits' => [
+                    'avg_sleep' => $user->sleepLogs()->avg('sleep_hours'),
+                    'avg_steps' => $user->activityLogs()->avg('daily_steps'),
+                    'diet_quality' => $user->profile->overall_diet_quality,
+                ],
+                'risk_factors' => [
+                    'smoking' => $user->profile->smoking_status,
+                    'alcohol' => $user->profile->alcohol_consumption,
+                    'avg_stress' => $user->stressLogs()->avg('stress_level'),
+                ]
+            ];
+        });
+    }
+
+    public function calculateBMI($weight, $height)
+    {
+        if ($height > 0) {
+            return round($weight / (($height / 100) ** 2), 2);
+        }
+        return null;
+    }
+
+    
 }
