@@ -37,6 +37,11 @@ class PartnerController extends Controller
 
         $partner = Partner::create($validated);
 
+        if ($partner->image_url) {
+            $partner->image_url = asset('storage/' . $partner->image_url);
+        }
+
+
         return response()->json([
             'success' => true,
             'message' => 'Partner added successfully',
@@ -59,10 +64,10 @@ class PartnerController extends Controller
     public function update(Request $request, $id)
     {
         $partner = Partner::find($id);
-        if (!$partner) return response()->json(['message' => 'Partner not found'], 404);
+        if (!$partner) return response()->json(['message' => 'Not found'], 404);
 
         $validated = $request->validate([
-            'name'    => 'sometimes|string|max:255',
+            'name'    => 'sometimes|string',
             'email'   => 'sometimes|email|unique:partners,email,' . $id,
             'company' => 'nullable|string',
             'image'   => 'nullable|image|max:2048',
@@ -74,14 +79,13 @@ class PartnerController extends Controller
                 Storage::disk('public')->delete($oldPath);
             }
             
-            $path = $request->file('image')->store('partners', 'public');
-            $validated['image_url'] = $path; 
+            $validated['image_url'] = $request->file('image')->store('partners', 'public');
         }
 
         $partner->update($validated);
 
         if ($partner->image_url) {
-            $partner->image_url = asset('storage/' . $partner->getRawOriginal('image_url'));
+            $partner->image_url = asset('storage/' . $partner->image_url);
         }
 
         return response()->json([
