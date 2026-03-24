@@ -107,41 +107,33 @@ protected function getPlanDuration($user)
     $plan = $user->plan;
     if (!$plan) return null;
 
-    // Get latest successful payment for this plan
     $latestPayment = $user->planPayments()
-                          ->where('plan_id', $plan->id)
-                          ->where('status', 'paid')
-                          ->latest()
-                          ->first();
+        ->where('plan_id', $plan->id)
+        ->where('status', 'paid')
+        ->latest()
+        ->first();
 
     if (!$latestPayment) return null;
 
     $startDate = $latestPayment->created_at;
 
-    // Use the billing from payment metadata
-    $billing = $latestPayment->billing ?? $plan->billing_cycle;
+    // ✅ Use billing from DB (NOT plan table)
+    $billing = $latestPayment->billing;
 
     $durationDays = 0;
 
-    switch ($billing) {
-        case 'days':
-            $durationDays = (int)($plan->duration ?? 0);
-            break;
-        case 'monthly':
-            $durationDays = 30;
-            break;
-        case 'annual':
-            $durationDays = 365;
-            break;
-        default:
-            $durationDays = (int)($plan->duration ?? 0);
-            break;
+    if ($billing === 'annual') {
+        $durationDays = 365;
+    } elseif ($billing === 'monthly') {
+        $durationDays = 30;
+    } else {
+        $durationDays = (int)($plan->duration ?? 0);
     }
 
     $endDate = $startDate->copy()->addDays($durationDays);
     $remainingDays = now()->diffInDays($endDate, false);
 
-    return $remainingDays > 0 ? (int)$remainingDays : 0; // integer days
+    return $remainingDays > 0 ? (int)$remainingDays : 0;
 }
 
 
