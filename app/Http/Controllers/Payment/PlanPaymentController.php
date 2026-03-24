@@ -140,56 +140,49 @@ class PlanPaymentController extends Controller
         }
     }
 
-  public function processPayment(Request $request)
+    //processpayment
+
+ public function processPayment(Request $request)
 {
     $request->validate([
         'plan_id' => 'required|exists:plans,id',
-        'billing' => 'required|in:monthly,annual', // monthly বা annual
+        'billing' => 'required|in:monthly,annual',
     ]);
 
     $plan = Plan::findOrFail($request->plan_id);
     $user = auth()->user();
 
-    // ✅ Calculate final amount
+    // ✅ Calculate price
     $finalPrice = $plan->price;
+
     if ($request->billing === 'annual') {
-        $finalPrice = $plan->price * 12 * 0.9; // 12 months × 10% discount
+        $finalPrice = $plan->price * 12 * 0.9;
     }
 
-    // ✅ Calculate subscription duration in integer days
+    // ✅ Duration based on USER INPUT (IMPORTANT)
     $durationDays = 0;
-    switch ($plan->billing_cycle) {
-        case 'days':
-            $durationDays = (int)($plan->duration ?? 0);
-            break;
-        case 'monthly':
-            $durationDays = 30;
-            break;
-        case 'annual':
-            $durationDays = 365;
-            break;
-        default:
-            $durationDays = (int)($plan->duration ?? 0);
-            break;
-    }
 
-    $startDate = now();
-    $endDate = $startDate->copy()->addDays($durationDays);
+    if ($request->billing === 'annual') {
+        $durationDays = 365;
+    } elseif ($request->billing === 'monthly') {
+        $durationDays = 30;
+    } else {
+        $durationDays = (int)($plan->duration ?? 0);
+    }
 
     try {
-        // ✅ Create temporary payment record
+        // ✅ Save payment with billing
         $payment = PlanPayment::create([
             'user_id'        => $user->id,
             'plan_id'        => $plan->id,
             'transaction_id' => 'TEMP_' . uniqid(),
             'amount'         => $finalPrice,
             'currency'       => 'usd',
+            'billing'        => $request->billing, // ✅ VERY IMPORTANT
             'status'         => 'unpaid',
-            'start_date'     => $startDate,
-            'end_date'       => $endDate,
         ]);
 
-        // ✅ Free plan check
+        // ✅ Free plan
         if ($finalPrice <= 0) {
             $payment->update(['status' => 'paid']);
             $user->update(['plan_id' => $plan->id]);
@@ -202,14 +195,15 @@ class PlanPaymentController extends Controller
             ]);
         }
 
-        // ✅ Stripe Checkout Session
+        // ✅ Stripe
         $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
+
         $session = $stripe->checkout->sessions->create([
             'mode' => 'payment',
             'line_items' => [[
                 'price_data' => [
                     'currency'    => 'usd',
-                    'unit_amount' => (int)($finalPrice * 100), // cents
+                    'unit_amount' => (int)($finalPrice * 100),
                     'product_data' => [
                         'name' => $plan->name,
                         'description' => implode(", ", $plan->features ?? []),
@@ -226,7 +220,6 @@ class PlanPaymentController extends Controller
             'cancel_url'  => url('/api/v1/payment/cancel'),
         ]);
 
-        // ✅ Update payment with Stripe session ID
         $payment->update(['transaction_id' => $session->id]);
 
         return response()->json([
@@ -234,11 +227,12 @@ class PlanPaymentController extends Controller
             'checkout_url' => $session->url,
             'session_id'   => $session->id,
             'amount'       => $finalPrice,
-            'plan_duration_days' => $durationDays, // integer
+            'plan_duration_days' => $durationDays,
         ]);
 
     } catch (\Exception $e) {
         \Log::error('Stripe Payment Error: ' . $e->getMessage());
+
         return response()->json([
             'success' => false,
             'message' => 'Stripe error: ' . $e->getMessage(),
