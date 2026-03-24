@@ -68,7 +68,10 @@ class LoginController extends Controller
                     'profession_type' => $user->profession_type ?? null, // <-- added
                    
                     'is_profile_completed' => $profileStatus,
-                    
+                        
+                   // ✅ Add timestamps
+                        'created_at' => $user->created_at->toDateTimeString(),
+                        'updated_at' => $user->updated_at->toDateTimeString(),
                 ],
                
                 'token' => $token,
