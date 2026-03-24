@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->index()->constrained()->onDelete('cascade');
             $table->date('log_date');
-            $table->unsignedTinyInteger('stress_level')->comment('1: Low, 5: Extreme')->nullable();
+            $table->unsignedTinyInteger('stress_level')->comment('1: Low, 10: Extreme')->nullable();
             $table->enum('mood', ['motivated','normal', 'low','happy', 'sad', 'neutral', 'angry', 'anxious'])->default('normal');
             $table->text('description')->nullable(); 
             $table->timestamps();
