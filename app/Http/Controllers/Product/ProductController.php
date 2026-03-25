@@ -7,6 +7,8 @@ use App\Models\Product;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Imports\ProductsImport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ProductController extends Controller
 {
@@ -303,6 +305,35 @@ class ProductController extends Controller
                 'error' => 'Something went wrong: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+
+    public function bulkUpload(Request $request) 
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,csv,txt|max:2048'
+        ]);
+
+        Excel::import(new ProductsImport, $request->file('file'));
+
+        return response()->json(['success' => true, 'message' => 'Products uploaded successfully!']);
+    }
+
+    public function downloadTemplate()
+    {
+        $headers = ["name", "description", "category", "price", "redirect_url", "status"];
+        
+        $callback = function() use ($headers) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, $headers);
+            fputcsv($file, ["Sample Product", "Description here", "fitness", "99.99", "https://link.com", "draft"]);
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=product_template.csv",
+        ]);
     }
 
 }

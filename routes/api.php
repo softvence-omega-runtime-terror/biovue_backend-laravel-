@@ -281,6 +281,8 @@ Route::prefix('v1')->group(function () {
         Route::delete('/products/{id}', [ProductController::class, 'destroy']);
         Route::post('/products/status/{id}', [ProductController::class, 'updateProductStatus']);
         Route::get('/products/supplier', [ProductController::class, 'supplierProduct']);
+        Route::post('/products/bulk-upload', [ProductController::class, 'bulkUpload']);
+        Route::get('/products/template', [ProductController::class, 'downloadTemplate']);
 
         Route::get('/trainer-notes/{userId}', [TrainerController::class, 'indexTrainerNotes']);
         Route::post('/trainer-notes', [TrainerController::class, 'storeTrainerNote']);
