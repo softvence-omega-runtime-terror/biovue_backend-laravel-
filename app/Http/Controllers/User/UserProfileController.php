@@ -64,6 +64,7 @@ class UserProfileController extends Controller
             'lean' => 'nullable|boolean',
             'toned' => 'nullable|boolean',
             'current_image' => 'nullable|string',
+            'body_fat' => 'nullable|string|max:20',
         ]);
 
         $user = User::find($validated['user_id']);
