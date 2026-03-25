@@ -303,12 +303,12 @@ Route::prefix('v1')->group(function () {
         Route::get('supplyer-dashboard',[SupplyerController::class,'index']);
         Route::get('all-users-for-supplyer', [SupplyerController::class, 'userIndex']);
     
-        Route::apiResource('partners', PartnerController::class);
+        Route::apiResource('partners', PartnerController::class)->except(['index']);
 
         Route::get('getAiInputData/{userId}', [UserHabitUpdateController::class, 'getAiInputData']);
     });
 
-
+    Route::apiResource('partners', PartnerController::class)->except(['store', 'update', 'destroy', 'show']);
     Route::get('/products/supplier/ai', [ProductController::class, 'supplierProductForAI']);
     Route::get('/supplier-profile/{id}', [ProductController::class, 'supplierProfileWithProducts']);
 
