@@ -26,6 +26,7 @@ class ProductsImport implements ToModel, WithHeadingRow, WithValidation
             'price'        => $row['price'],
             'redirect_url' => $row['redirect_url'],
             'status'       => $row['status'] ?? 'draft',
+            'image'        => $imageName ? 'products/' . $imageName : null,
         ]);
     }
 
@@ -36,6 +37,7 @@ class ProductsImport implements ToModel, WithHeadingRow, WithValidation
             'category' => 'required|in:fitness,nutrition,supplements',
             'price'    => 'required|numeric',
             'status'   => 'nullable|in:draft,published',
+            'image'    => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
         ];
     }
 }
