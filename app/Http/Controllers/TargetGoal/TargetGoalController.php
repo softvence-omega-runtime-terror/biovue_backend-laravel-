@@ -35,6 +35,7 @@ class TargetGoalController extends Controller
             'start_date'          => 'nullable|date',
             'end_date'            => 'nullable|date|after_or_equal:start_date',
             'water_target'        => 'nullable|integer|min:0|max:20',
+            'supplement_recommendation' => 'nullable|array',
         ]);
 
         $goal = TargetGoal::updateOrCreate(
@@ -70,32 +71,33 @@ class TargetGoalController extends Controller
             $targetId = $userId ?: $loggedInUser->id;
 
             if ($targetId != $loggedInUser->id) {
+                
                 $isConnected = DB::table('connect_user_proffesions')
                     ->where('profession_id', $loggedInUser->id)
                     ->where('user_id', $targetId)
                     ->exists();
 
-                if (!$isConnected && $loggedInUser->user_type !== 'admin') {
+                if (!$isConnected && $loggedInUser->user_type !== 'professional') {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Unauthorized: You are not connected to this client.'
+                        'message' => 'Unauthorized: You do not have permission to view this goal.'
                     ], 403);
                 }
             }
 
-            $goal = TargetGoal::where('user_id', $targetId)
+            $goals = TargetGoal::where('user_id', $targetId)
                 ->where('is_active', true)
                 ->get();
 
             return response()->json([
                 'success' => true,
-                'data'    => $goal
+                'data'    => $goals
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error'   => $e->getMessage()
+                'error'   => 'Something went wrong while fetching goals.'
             ], 500);
         }
     }
@@ -146,52 +148,53 @@ class TargetGoalController extends Controller
 //    }
 
 
-   public function update(Request $request, $id)
-{
-    $goal = TargetGoal::find($id);
+    public function update(Request $request, $id)
+    {
+        $goal = TargetGoal::find($id);
 
-    if (!$goal) {
-        return response()->json(['success' => false, 'message' => 'Goal not found'], 404);
-    }
+        if (!$goal) {
+            return response()->json(['success' => false, 'message' => 'Goal not found'], 404);
+        }
 
-    $loggedInUser = Auth::user();
+        $loggedInUser = Auth::user();
 
-    $isOwner = $goal->user_id == $loggedInUser->id;
+        $isOwner = $goal->user_id == $loggedInUser->id;
 
-    $isConnectedTrainer = false;
-    if (in_array($loggedInUser->user_type, ['professional', 'trainer', 'coach', 'trainer_coach'])) {
-        $isConnectedTrainer = DB::table('connect_user_proffesions')
-            ->where('profession_id', $loggedInUser->id)
-            ->where('user_id', $goal->user_id)
-            ->exists();
-    }
+        $isConnectedTrainer = false;
+        if (in_array($loggedInUser->user_type, ['professional', 'trainer', 'coach', 'trainer_coach'])) {
+            $isConnectedTrainer = DB::table('connect_user_proffesions')
+                ->where('profession_id', $loggedInUser->id)
+                ->where('user_id', $goal->user_id)
+                ->exists();
+        }
 
-    $loggedInUser->notify(new MilestoneNotification('New Milestone', 'Your target Is Complete','milestone_message'));
+        $loggedInUser->notify(new MilestoneNotification('New Milestone', 'Your target Is Complete','milestone_message'));
 
-    if ($isOwner || $isConnectedTrainer) {
+        if ($isOwner || $isConnectedTrainer) {
 
-        $validated = $request->validate([
-            'target_weight'       => 'nullable|numeric|between:0,999.99',
-            'weekly_workout_goal' => 'nullable|integer|min:1|max:7',
-            'daily_step_goal'     => 'nullable|integer|min:0',
-            'sleep_target'        => 'nullable|numeric|between:0,24',
-            'start_date'          => 'nullable|date',
-            'end_date'            => 'nullable|date|after_or_equal:start_date',
-        ]);
+            $validated = $request->validate([
+                'target_weight'       => 'nullable|numeric|between:0,999.99',
+                'weekly_workout_goal' => 'nullable|integer|min:1|max:7',
+                'daily_step_goal'     => 'nullable|integer|min:0',
+                'sleep_target'        => 'nullable|numeric|between:0,24',
+                'start_date'          => 'nullable|date',
+                'end_date'            => 'nullable|date|after_or_equal:start_date',
+                'supplement_recommendation' => 'nullable|array'
+            ]);
 
-        $goal->update($validated);
+            $goal->update($validated);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Target goal updated successfully',
+                'data'    => $goal
+            ]);
+        }
 
         return response()->json([
-            'success' => true,
-            'message' => 'Target goal updated successfully',
-            'data'    => $goal
-        ]);
+            'success' => false,
+            'message' => 'Unauthorized: You are not connected to this client.'
+        ], 403);
     }
-
-    return response()->json([
-        'success' => false,
-        'message' => 'Unauthorized: You are not connected to this client.'
-    ], 403);
-}
 }
 
