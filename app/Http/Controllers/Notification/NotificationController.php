@@ -38,6 +38,18 @@ class NotificationController extends Controller
         ]);
     }
 
+    public function getSettings(Request $request)
+    {
+        $user = Auth::user();
+
+        $settings = $user->notificationSettings;
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $settings
+        ]);
+    }
+
     public function notificationListByUser()
     {
         try {

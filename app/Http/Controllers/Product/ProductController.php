@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Imports\ProductsImport;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ProductsExport;
 
 class ProductController extends Controller
 {
@@ -311,22 +312,38 @@ class ProductController extends Controller
     public function bulkUpload(Request $request) 
     {
         $request->validate([
-            'file' => 'required|mimes:xlsx,csv,txt|max:2048'
+            'file' => 'required|mimes:xlsx,xls,csv,txt|max:5120'
         ]);
 
-        Excel::import(new ProductsImport, $request->file('file'));
+        try {
+            Excel::import(new ProductsImport, $request->file('file'));
 
-        return response()->json(['success' => true, 'message' => 'Products uploaded successfully!']);
+            return response()->json([
+                'success' => true, 
+                'message' => 'Products uploaded successfully!'
+            ]);
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            // ভ্যালিডেশন ফেইল করলে (যেমন নাম না থাকলে) এটি মেসেজ দিবে
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors'  => $e->failures()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function downloadTemplate()
     {
-        $headers = ["name", "description", "category", "price", "redirect_url", "status"];
-        
-        $callback = function() use ($headers) {
+        $callback = function() {
             $file = fopen('php://output', 'w');
-            fputcsv($file, $headers);
-            fputcsv($file, ["Sample Product", "Description here", "fitness", "99.99", "https://link.com", "draft"]);
+            // সঠিক হেডার যা ইম্পোর্ট ক্লাসের সাথে মিলবে
+            fputcsv($file, ["name", "description", "category", "price", "redirect_url", "status", "image"]);
+            fputcsv($file, ["Sample Product", "Description", "fitness", "99.99", "https://link.com", "draft", "https://images.unsplash.com/photo-1593095191071-82b63ad0010d?w=400"]);
             fclose($file);
         };
 
@@ -336,4 +353,8 @@ class ProductController extends Controller
         ]);
     }
 
+    public function downloadSample()
+    {
+        return Excel::download(new ProductsExport, 'products.csv');
+    }
 }
