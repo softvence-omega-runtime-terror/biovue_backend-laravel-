@@ -22,6 +22,7 @@ class UserProfileController extends Controller
     {
         $validated = $request->validate([
             'user_id'         => 'required|exists:users,id',
+            'name'    => 'nullable|string|max:255',
             'user_type'       => 'required|in:individual,professional',
             'profession_type' => 'nullable|string|in:trainer_coach,nutritionist,supplement_supplier',
 
@@ -69,6 +70,7 @@ class UserProfileController extends Controller
 
         $user = User::find($validated['user_id']);
         $user->update([
+            'name'            => $validated['name'] ?? $user->name,
             'user_type'       => $validated['user_type'],
             'profession_type' => $validated['profession_type'] ?? $user->profession_type,
         ]);
@@ -88,7 +90,7 @@ class UserProfileController extends Controller
         ];
         $medicalData = collect($validated)->only($medicalFields)->toArray();
 
-        $profileData = collect($validated)->except(array_merge(['user_type', 'profession_type'], $medicalFields))->toArray();
+        $profileData = collect($validated)->except(array_merge(['user_id', 'name', 'user_type', 'profession_type'], $medicalFields))->toArray();
 
         UserProfile::updateOrCreate(['user_id' => $validated['user_id']], $profileData);
 

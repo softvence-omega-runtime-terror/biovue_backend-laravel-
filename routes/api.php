@@ -85,6 +85,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/payment/success', [PlanPaymentController::class, 'paymentSuccess'])->name('payment.success');
         Route::get('/payment/cancel', [PlanPaymentController::class, 'paymentCancel'])->name('payment.cancel');
     Route::get('ads', [AdsController::class, 'index']);
+    
+    Route::apiResource('partners', PartnerController::class)->except(['store', 'update', 'destroy', 'show']);
 
     // ----------------------------
     // Protected Routes (Require Auth)
@@ -273,16 +275,19 @@ Route::prefix('v1')->group(function () {
         // Projections
         Route::post('/projections', [ProjectionController::class, 'generateProjection']);
 
+        Route::get('/user/notification', [NotificationController::class, 'getSettings']);
         Route::post('/user/notification-settings', [NotificationController::class, 'updateSettings']);
 
+        
+        Route::post('/products/bulk-upload', [ProductController::class, 'bulkUpload']);
+        Route::get('/products/template', [ProductController::class, 'downloadTemplate']);
+        Route::get('/products/download-sample', [ProductController::class, 'downloadSample']);
         Route::post('/products', [ProductController::class, 'store']);
         Route::get('/products', [ProductController::class, 'index']);
         Route::post('/products/{id}', [ProductController::class, 'update']);
         Route::delete('/products/{id}', [ProductController::class, 'destroy']);
         Route::post('/products/status/{id}', [ProductController::class, 'updateProductStatus']);
         Route::get('/products/supplier', [ProductController::class, 'supplierProduct']);
-        Route::post('/products/bulk-upload', [ProductController::class, 'bulkUpload']);
-        Route::get('/products/template', [ProductController::class, 'downloadTemplate']);
 
         Route::get('/trainer-notes/{userId}', [TrainerController::class, 'indexTrainerNotes']);
         Route::post('/trainer-notes', [TrainerController::class, 'storeTrainerNote']);
@@ -308,7 +313,6 @@ Route::prefix('v1')->group(function () {
         Route::get('getAiInputData/{userId}', [UserHabitUpdateController::class, 'getAiInputData']);
     });
 
-    Route::apiResource('partners', PartnerController::class)->except(['store', 'update', 'destroy', 'show']);
     Route::get('/products/supplier/ai', [ProductController::class, 'supplierProductForAI']);
     Route::get('/supplier-profile/{id}', [ProductController::class, 'supplierProfileWithProducts']);
 
