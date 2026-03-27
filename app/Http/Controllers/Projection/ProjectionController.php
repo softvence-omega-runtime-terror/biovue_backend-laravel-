@@ -3,109 +3,105 @@
 namespace App\Http\Controllers\Projection;
 
 use App\Http\Controllers\Controller;
-use App\Models\Projection;
+use App\Models\ProjectionData;
+use App\Models\ProjectionCredit;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ProjectionController extends Controller
 {
-    public function generateProjection(Request $request) 
+    public function generateProjection(Request $request)
     {
-        $user = auth()->user()->load('profile');
-        
         $request->validate([
-            'current_photo' => 'required|image|mimes:jpeg,png,jpg,webp|max:10240',
+            'image'      => 'required|image|mimes:jpeg,png,jpg,webp',
+            'timeframe'  => 'required|string',
+            'resolution' => 'required|string',
         ]);
 
-        try {
-            $file = $request->file('current_photo');
-            $path = $file->store('projections', 'public');
+        $user = auth()->user();
 
-            $aiResponse = Http::timeout(120) 
-                ->attach(
-                    'image', 
-                    file_get_contents($file), 
-                    $file->getClientOriginalName()
-                )
-                ->post('https://ai.biovuedigitalwellness.com/api/v1/projection/current-lifestyle/', [
-                    'user_id' => (string) $user->id,
-                    'weight'  => $user->profile->weight ?? 0,
-                    'height'  => $user->profile->height ?? 0,
+        $credits = ProjectionCredit::where('user_id', $user->id)->first();
+        if (!$credits || $credits->projection_limit <= 0) {
+            return response()->json(['success' => false, 'message' => 'Insufficient credits'], 403);
+        }
+
+        try {
+            $imagePath = $request->file('image')->store('projections/inputs', 'public');
+
+            $response = Http::attach(
+                'image', file_get_contents($request->file('image')), 'input.jpg'
+            )->post('https://ai.biovuedigitalwellness.com/api/v1/projection/combined', [
+                'user_id'    => $user->id,
+                'timeframe'  => $request->timeframe,
+                'resolution' => $request->resolution,
+            ]);
+
+            if ($response->successful()) {
+                $aiData = $response->json();
+
+                DB::beginTransaction();
+
+                $projection = ProjectionData::create([
+                    'projection_id'    => $aiData['projection_id'],
+                    'user_id'          => $user->id,
+                    'input_image'      => $imagePath,
+                    'timeframe'        => $aiData['timeframe'],
+                    'resolution'       => $aiData['resolution'],
+                    'projections_data' => $aiData['projections'],
+                    'summary_data'     => $aiData['summary'],
                 ]);
 
-            if ($aiResponse->failed()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'AI Service Error: ' . ($aiResponse->json()['detail'] ?? 'Unknown Error'),
-                    'status'  => $aiResponse->status()
-                ], $aiResponse->status());
+                $credits->decrement('projection_limit');
+                
+                DB::commit();
+
+                return response()->json(['success' => true, 'data' => $projection], 201);
             }
 
-            $aiData = $aiResponse->json();
-
-            $projection = \App\Models\Projection::create([
-                'user_id'          => $user->id,
-                'current_photo'    => $path,
-                'projection_url'   => $aiData['projection_url'] ?? null,
-                'projected_weight' => $aiData['est_weight'] ?? null,
-                'projected_bmi'    => $aiData['est_bmi'] ?? null,
-                'expected_changes' => json_encode($aiData['expected_changes'] ?? []),
-                'confidence_score' => $aiData['confidence_score'] ?? null,
-            ]);
-
-            return response()->json([
-                'user_id'          => $aiData['user_id'],
-                'projection_id'    => $aiData['projection_id'],
-                'projection_url'   => $aiData['projection_url'],
-                'route'            => $aiData['route'],
-                'timeframe'        => $aiData['timeframe'],
-                'est_bmi'          => $aiData['est_bmi'],
-                'est_weight'       => $aiData['est_weight'],
-                'expected_changes' => $aiData['expected_changes'],
-                'confidence_score' => $aiData['confidence_score']
-            ]);
+            return response()->json(['success' => false, 'message' => 'AI API Error'], 502);
 
         } catch (\Exception $e) {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+            Log::error("Projection Error: " . $e->getMessage());
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
-    // public function generateProjection(Request $request) 
-    // {
-    //     $user = Auth::user()->load('profile');
+
+    public function show($id)
+    {
+        $projection = ProjectionData::where('user_id', auth()->id())->findOrFail($id);
         
-    //     $request->validate([
-    //         'current_photo' => 'required|image',
-    //     ]);
+        $aiDomain = "https://ai.biovuedigitalwellness.com/api/v1/";
+        $pData = $projection->projections_data;
 
-    //     $path = $request->file('current_photo')->store('projections', 'public');
+        return response()->json([
+            'success' => true,
+            'title'   => 'Projection Results',
+            'subtitle' => 'Visualizing your trajectory over the next ' . $projection->timeframe,
+            'input_image' => asset('storage/' . $projection->input_image), 
 
-    //     $currentWeight = $user->profile->weight; 
-    //     $currentHeight = $user->profile->height;
-
-    //     $projectedWeight = $currentWeight - 5; 
-    //     $projectedBmi = $projectedWeight / (($currentHeight/100) ** 2);
-
-    //     $projection = Projection::create([
-    //         'user_id' => $user->id,
-    //         'current_photo' => $path,
-    //         'projected_weight' => $projectedWeight,
-    //         'projected_bmi' => $projectedBmi,
-    //         'expected_changes' => [
-    //             'Improved weight control',
-    //             'Reduced body fat percentage',
-    //             'Better metabolic health'
-    //         ]
-    //     ]);
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'current_data' => [
-    //             'weight' => $currentWeight,
-    //             'bmi' => ($currentWeight / (($currentHeight/100) ** 2))
-    //         ],
-    //         'projected_data' => $projection
-    //     ]);
-    // }
+            'data' => [
+                'current_lifestyle' => [
+                    'label'            => "If you continue your current lifestyle without changes for " . $projection->timeframe,
+                    'image'            => $aiDomain . ($pData['current_lifestyle']['projection_url'] ?? ''),
+                    'timeframe'        => $projection->timeframe,
+                    'est_bmi'          => $pData['current_lifestyle']['est_bmi'] ?? 'N/A',
+                    'est_weight'       => $pData['current_lifestyle']['est_weight'] ?? 'N/A',
+                    'expected_changes' => $pData['current_lifestyle']['expected_changes'] ?? [],
+                ],
+                'future_goal' => [
+                    'label'            => "Achieving your goal in " . $projection->timeframe,
+                    'image'            => $aiDomain . ($pData['future_goal']['projection_url'] ?? ''),
+                    'timeframe'        => $projection->timeframe,
+                    'est_bmi'          => $pData['future_goal']['est_bmi'] ?? 'N/A',
+                    'est_weight'       => $pData['future_goal']['est_weight'] ?? 'N/A',
+                    'expected_changes' => $pData['future_goal']['expected_changes'] ?? [],
+                ]
+            ]
+        ]);
+    }
 }

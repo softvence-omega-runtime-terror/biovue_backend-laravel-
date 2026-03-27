@@ -122,15 +122,16 @@ class UserProfileController extends Controller
         ]);
     }
 
-   public function showByUserId($userId)
-{
-    $user = \App\Models\User::with('profile')->findOrFail($userId);
+    public function showByUserId($userId)
+    {
+        $user = User::with('profile', 'medicalHistory')->findOrFail($userId);
 
-    return response()->json([
-        'success' => true,
-        'data' => $user
-    ]);
-}
+        return response()->json([
+            'success' => true,
+            'data' => $user
+        ]);
+    }
+
     public function destroy($id)
     {
         $profile = UserProfile::findOrFail($id);

@@ -12,18 +12,9 @@ class PlanPayment extends Model
     use HasFactory, SoftDeletes, Notifiable;
 
     protected $fillable = [
-        'user_id',
-        'plan_id',
-        'payment_method',
-        'transaction_id',
-        'amount',
-        'currency',
-        'status',
-
-        // ✅ NEW FIELDS (IMPORTANT)
-        'billing',
-        'start_date',
-        'end_date',
+    'user_id', 'plan_id', 'transaction_id', 'amount', 
+    'currency', 'status', 'stripe_session_id', 'billing', 
+    'start_date', 'end_date', 'stripe_session_id'
     ];
 
     protected $casts = [
