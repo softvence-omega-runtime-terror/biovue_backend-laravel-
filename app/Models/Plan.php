@@ -20,6 +20,7 @@ class Plan extends Model
         'member_limit',
         'features',
         'status',
+        'projection_limit'
     ];
 
     protected $casts = [

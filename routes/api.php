@@ -82,6 +82,7 @@ Route::prefix('v1')->group(function () {
 
     // Stripe Webhook
         Route::post('payment/webhook', [PlanPaymentController::class, 'handleWebhook']);
+        Route::post('/stripe/webhook', [PlanPaymentController::class, 'webhookHandle']);
         Route::get('/payment/success', [PlanPaymentController::class, 'paymentSuccess'])->name('payment.success');
         Route::get('/payment/cancel', [PlanPaymentController::class, 'paymentCancel'])->name('payment.cancel');
     Route::get('ads', [AdsController::class, 'index']);
@@ -170,7 +171,8 @@ Route::prefix('v1')->group(function () {
 
 
            //subscription payment
-         Route::post('/payment/process', [PlanPaymentController::class, 'processPayment']);
+        Route::post('/payment/process', [PlanPaymentController::class, 'paymentProcess']);
+        Route::post('/process/payment', [PlanPaymentController::class, 'processPayment']);
         Route::get('/all-payments', [PlanPaymentController::class, 'index'])->name('payment.index'); // admin show all
         Route::get('/payment/show', [PlanPaymentController::class, 'show']);
 
@@ -274,6 +276,8 @@ Route::prefix('v1')->group(function () {
 
         // Projections
         Route::post('/projections', [ProjectionController::class, 'generateProjection']);
+        Route::post('/generate/projections', [ProjectionController::class, 'generateProjection']);
+        Route::get('/projections/{id}', [ProjectionController::class, 'show']);
 
         Route::get('/user/notification', [NotificationController::class, 'getSettings']);
         Route::post('/user/notification-settings', [NotificationController::class, 'updateSettings']);
