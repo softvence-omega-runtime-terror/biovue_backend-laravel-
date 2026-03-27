@@ -22,21 +22,20 @@ class ProjectionController extends Controller
 
         $user = auth()->user();
 
-        // $credits = ProjectionCredit::where('user_id', $user->id)->first();
-        // if (!$credits || $credits->projection_limit <= 0) {
-        //     return response()->json(['success' => false, 'message' => 'Insufficient credits'], 403);
-        // }
+        $credits = \App\Models\ProjectionCredit::where('user_id', $user->id)->first();
+        
+        if (!$credits || $credits->projection_limit <= 0) {
+            return response()->json(['success' => false, 'message' => 'Insufficient credits'], 403);
+        }
 
         try {
             $imagePath = $request->file('image')->store('projections/inputs', 'public');
 
-            $response = Http::timeout(300) // Timeout bariye dilam (5 mins)
-            ->attach(
+            $response = Http::timeout(300)->attach(
                 'image', 
                 fopen($request->file('image')->getRealPath(), 'r'), 
                 $request->file('image')->getClientOriginalName()
-            )
-            ->post('https://ai.biovuedigitalwellness.com/api/v1/projection/combined', [
+            )->post('https://ai.biovuedigitalwellness.com/api/v1/projection/combined', [
                 'user_id'    => $user->id,
                 'timeframe'  => $request->timeframe,
                 'resolution' => $request->resolution,
@@ -45,7 +44,7 @@ class ProjectionController extends Controller
             if ($response->successful()) {
                 $aiData = $response->json();
 
-                DB::beginTransaction();
+                \Illuminate\Support\Facades\DB::beginTransaction();
 
                 $projection = ProjectionData::create([
                     'projection_id'    => $aiData['projection_id'],
@@ -53,24 +52,28 @@ class ProjectionController extends Controller
                     'input_image'      => $imagePath,
                     'timeframe'        => $aiData['timeframe'],
                     'resolution'       => $aiData['resolution'],
-                    'projections_data' => $aiData['projections'],
-                    'summary_data'     => $aiData['summary'],
+                    'projections_data' => $aiData['projections'], 
+                    'summary_data'     => $aiData['summary'] ?? null, 
                 ]);
 
                 $credits->decrement('projection_limit');
                 
-                DB::commit();
+                \Illuminate\Support\Facades\DB::commit();
 
                 return response()->json(['success' => true, 'data' => $projection], 201);
             }
 
-            return response()->json(['success' => false, 'message' => 'AI API Error'], 502);
+            return response()->json([
+                'success' => false, 
+                'message' => 'AI API Error', 
+                'error_detail' => $response->body() 
+            ], 502);
 
         } catch (\Exception $e) {
-            if (DB::transactionLevel() > 0) {
-                DB::rollBack();
+            if (\Illuminate\Support\Facades\DB::transactionLevel() > 0) {
+                \Illuminate\Support\Facades\DB::rollBack();
             }
-            Log::error("Projection Error: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("Projection Error: " . $e->getMessage());
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
