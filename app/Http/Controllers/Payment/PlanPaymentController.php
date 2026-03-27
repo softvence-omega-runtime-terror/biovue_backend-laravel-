@@ -325,6 +325,7 @@ class PlanPaymentController extends Controller
 
             return response()->json([
                 'success' => true,
+                'payment_id' => $payment->id,
                 'checkout_url' => $session->url,
                 'session_id'   => $session->id,
                 'amount'       => $finalPrice,
