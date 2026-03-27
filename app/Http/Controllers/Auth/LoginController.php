@@ -51,7 +51,7 @@ class LoginController extends Controller
         $token = $user->createToken('auth_token_' . $user->id)->plainTextToken;
         // ✅ Get plan duration in integer days
         $planDuration = $this->getPlanDuration($user);
-
+        $projectionCredits = $user->projectionCredits ? $user->projectionCredits->projection_limit : 0;
         // ✅ Return success response
         return response()->json([
             'success' => true,
@@ -66,7 +66,7 @@ class LoginController extends Controller
                     'plan_duration' => $planDuration, // integer days
                      'user_type' => $user->user_type ?? null,          // <-- added
                     'profession_type' => $user->profession_type ?? null, // <-- added
-                   
+                    'projection_credits' => $projectionCredits,
                     'is_profile_completed' => $profileStatus,
                         
                    // ✅ Add timestamps
