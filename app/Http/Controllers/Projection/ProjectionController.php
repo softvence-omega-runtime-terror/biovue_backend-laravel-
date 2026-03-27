@@ -30,9 +30,13 @@ class ProjectionController extends Controller
         try {
             $imagePath = $request->file('image')->store('projections/inputs', 'public');
 
-            $response = Http::attach(
-                'image', file_get_contents($request->file('image')), 'input.jpg'
-            )->post('https://ai.biovuedigitalwellness.com/api/v1/projection/combined', [
+            $response = Http::timeout(300) // Timeout bariye dilam (5 mins)
+            ->attach(
+                'image', 
+                fopen($request->file('image')->getRealPath(), 'r'), 
+                $request->file('image')->getClientOriginalName()
+            )
+            ->post('https://ai.biovuedigitalwellness.com/api/v1/projection/combined', [
                 'user_id'    => $user->id,
                 'timeframe'  => $request->timeframe,
                 'resolution' => $request->resolution,

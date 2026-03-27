@@ -275,7 +275,6 @@ Route::prefix('v1')->group(function () {
         Route::get('/conversations', [MessageController::class, 'getConversations']);
 
         // Projections
-        Route::post('/projections', [ProjectionController::class, 'generateProjection']);
         Route::post('/generate/projections', [ProjectionController::class, 'generateProjection']);
         Route::get('/projections/{id}', [ProjectionController::class, 'show']);
 
