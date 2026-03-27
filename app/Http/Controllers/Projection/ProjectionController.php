@@ -22,10 +22,10 @@ class ProjectionController extends Controller
 
         $user = auth()->user();
 
-        $credits = ProjectionCredit::where('user_id', $user->id)->first();
-        if (!$credits || $credits->projection_limit <= 0) {
-            return response()->json(['success' => false, 'message' => 'Insufficient credits'], 403);
-        }
+        // $credits = ProjectionCredit::where('user_id', $user->id)->first();
+        // if (!$credits || $credits->projection_limit <= 0) {
+        //     return response()->json(['success' => false, 'message' => 'Insufficient credits'], 403);
+        // }
 
         try {
             $imagePath = $request->file('image')->store('projections/inputs', 'public');
