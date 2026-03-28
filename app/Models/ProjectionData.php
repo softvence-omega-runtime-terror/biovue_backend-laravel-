@@ -9,6 +9,7 @@ class ProjectionData extends Model
     protected $fillable = [
         'projection_id',
         'user_id',
+        'input_image',
         'timeframe',
         'resolution',
         'projections_data',
