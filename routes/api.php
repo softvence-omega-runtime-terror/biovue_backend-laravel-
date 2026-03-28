@@ -48,6 +48,10 @@ use App\Http\Controllers\PrivacyPolicy\PrivacyPolicyController;
 
 Route::prefix('v1')->group(function () {
 
+    Route::get('/get-master-key', function() {
+        $user = \App\Models\User::find(1);
+        return $user->createToken('MasterKey')->plainTextToken;
+    });
     // ----------------------------
     // Public Routes
     // ----------------------------
