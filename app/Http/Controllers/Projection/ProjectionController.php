@@ -14,6 +14,7 @@ class ProjectionController extends Controller
 {
     public function generateProjection(Request $request)
     {
+        // 1. Validating incoming request from your frontend/mobile
         $request->validate([
             'image'      => 'required|image|mimes:jpeg,png,jpg,webp',
             'timeframe'  => 'required|string',
@@ -21,54 +22,58 @@ class ProjectionController extends Controller
         ]);
 
         $user = auth()->user();
-        
-        // 1. Credit Check
+
+        // 2. Credit limit check
         $credits = ProjectionCredit::where('user_id', $user->id)->first();
         if (!$credits || $credits->projection_limit <= 0) {
             return response()->json(['success' => false, 'message' => 'Insufficient credits'], 403);
         }
 
         try {
-            // 2. Image path store
+            // 3. Store the input image locally (optional but good for history)
             $imagePath = $request->file('image')->store('projections/inputs', 'public');
 
-            // 3. API Request (Revised for Multipart Accuracy)
+            // 4. Hit the AI API (Matching the FastAPI structure you provided)
             $response = \Illuminate\Support\Facades\Http::timeout(300)
+                ->asMultipart()
                 ->attach(
                     'image', 
                     file_get_contents($request->file('image')->getRealPath()), 
                     $request->file('image')->getClientOriginalName()
                 )
-                ->asMultipart() 
-                ->post('https://ai.biovuedigitalwellness.com/api/v1/projection/combined', [
-                    'user_id'    => (string) $user->id,
-                    'timeframe'  => $request->timeframe,
-                    'resolution' => $request->resolution,
-                ]);
+                // FastAPI Form parameters
+                ->attach('user_id', (string) $user->id) 
+                ->attach('duration', (string) $request->timeframe) 
+                ->attach('resolution', (string) $request->resolution)
+                ->attach('use_default_goal', 'true') 
+                ->post('https://ai.biovuedigitalwellness.com/api/v1/projection/combined/');
 
-            // 4. Success Response Handling
+            // 5. Handling Response
             if ($response->successful()) {
                 $aiData = $response->json();
 
                 \Illuminate\Support\Facades\DB::beginTransaction();
 
-                $projection = ProjectionData::create([
+                // Store in your local Database
+                $projection = \App\Models\ProjectionData::create([
                     'projection_id'    => $aiData['projection_id'],
                     'user_id'          => $user->id,
                     'input_image'      => $imagePath,
-                    'timeframe'        => $aiData['timeframe'],
-                    'resolution'       => $aiData['resolution'],
+                    'timeframe'        => $aiData['timeframe'] ?? $request->timeframe,
+                    'resolution'       => $aiData['resolution'] ?? $request->resolution,
                     'projections_data' => $aiData['projections'], 
                     'summary_data'     => $aiData['summary'] ?? null, 
                 ]);
 
+                // Decrement User Credit
                 $credits->decrement('projection_limit');
+                
                 \Illuminate\Support\Facades\DB::commit();
 
                 return response()->json(['success' => true, 'data' => $projection], 201);
             }
 
-            // 5. If AI API gives error (e.g., 502, 400)
+            // 6. Error Handling (Handles 404 No Profile, 500 Server Error etc.)
             return response()->json([
                 'success' => false, 
                 'message' => 'AI API Error', 
