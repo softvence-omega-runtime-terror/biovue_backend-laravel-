@@ -21,37 +21,38 @@ class ProjectionController extends Controller
         ]);
 
         $user = auth()->user();
-
-        // 1. Check Credits
-        $credits = \App\Models\ProjectionCredit::where('user_id', $user->id)->first();
         
+        // 1. Credit Check
+        $credits = ProjectionCredit::where('user_id', $user->id)->first();
         if (!$credits || $credits->projection_limit <= 0) {
             return response()->json(['success' => false, 'message' => 'Insufficient credits'], 403);
         }
 
         try {
-            // 2. Store local copy of the input image
+            // 2. Image path store
             $imagePath = $request->file('image')->store('projections/inputs', 'public');
 
-            // 3. Hit the AI API
+            // 3. API Request (Revised for Multipart Accuracy)
             $response = \Illuminate\Support\Facades\Http::timeout(300)
                 ->attach(
                     'image', 
                     file_get_contents($request->file('image')->getRealPath()), 
                     $request->file('image')->getClientOriginalName()
                 )
+                ->asMultipart() 
                 ->post('https://ai.biovuedigitalwellness.com/api/v1/projection/combined', [
-                    'user_id'    => (string)$user->id, 
+                    'user_id'    => (string) $user->id,
                     'timeframe'  => $request->timeframe,
                     'resolution' => $request->resolution,
                 ]);
 
+            // 4. Success Response Handling
             if ($response->successful()) {
                 $aiData = $response->json();
 
                 \Illuminate\Support\Facades\DB::beginTransaction();
 
-                $projection = \App\Models\ProjectionData::create([
+                $projection = ProjectionData::create([
                     'projection_id'    => $aiData['projection_id'],
                     'user_id'          => $user->id,
                     'input_image'      => $imagePath,
@@ -62,17 +63,16 @@ class ProjectionController extends Controller
                 ]);
 
                 $credits->decrement('projection_limit');
-                
                 \Illuminate\Support\Facades\DB::commit();
 
                 return response()->json(['success' => true, 'data' => $projection], 201);
             }
 
-            // 5. Handle AI API Failure
+            // 5. If AI API gives error (e.g., 502, 400)
             return response()->json([
                 'success' => false, 
                 'message' => 'AI API Error', 
-                'error_detail' => $response->json() 
+                'error_detail' => $response->json() ?: $response->body()
             ], $response->status());
 
         } catch (\Exception $e) {
@@ -80,7 +80,7 @@ class ProjectionController extends Controller
                 \Illuminate\Support\Facades\DB::rollBack();
             }
             \Illuminate\Support\Facades\Log::error("Projection Error: " . $e->getMessage());
-            return response()->json(['success' => false, 'error' => 'Internal Server Error', 'detail' => $e->getMessage()], 500);
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
 
