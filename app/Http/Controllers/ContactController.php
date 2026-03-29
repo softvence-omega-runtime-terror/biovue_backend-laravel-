@@ -26,7 +26,7 @@ class ContactController extends Controller
        Mail::raw(
         "New Contact Message\n\nFrom: {$validated['email']}\n\nMessage:\n{$validated['message']}",
         function ($mail) use ($validated) {
-            $mail->to('rehanakabirmim@gmail.com')
+            $mail->to('biovuesupport@gmail.com')
                 ->subject('New Contact Message')
                 ->from(config('mail.from.address'), config('mail.from.name'))
                 ->replyTo($validated['email']);
