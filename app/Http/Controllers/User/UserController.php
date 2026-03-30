@@ -76,11 +76,29 @@ class UserController extends Controller
                 return response()->json(['success' => false, 'message' => 'Profile not found'], 404);
             }
 
-            $heightInMeters = $profile->height / 100;
-            $bmi = $heightInMeters > 0 ? round($profile->weight / ($heightInMeters * $heightInMeters), 1) : 0;
+            $unit = $profile->unit ?? 'imperial'; 
+            $weight = $profile->weight ?? 0;
+            $height = $profile->height ?? 0; 
+
+            $weightInKg = ($unit === 'imperial') ? $weight * 0.453592 : $weight;
+            $heightInMeters = $height / 100;
+            $bmi = $heightInMeters > 0 ? round($weightInKg / ($heightInMeters * $heightInMeters), 1) : 0;
+
+            if ($unit === 'imperial') {
+                $displayWeight = round($weight, 1) . ' lbs';
+                
+                $totalInches = $height / 2.54;
+                $feet = floor($totalInches / 12);
+                $inches = round($totalInches % 12);
+                $displayHeight = "{$feet}'{$inches}\"";
+            } else {
+                $displayWeight = round($weight, 1) . ' kg';
+                $displayHeight = $height . ' cm';
+            }
 
             return response()->json([
                 'success' => true,
+                'unit_system' => $unit,
                 'user_info' => [
                     'name' => $user->name,
                     'email' => $user->email,
@@ -91,7 +109,8 @@ class UserController extends Controller
                     'data_logged' => 12,
                 ],
                 'health_overview' => [
-                    'current_weight' => $profile->weight . ' lbs',
+                    'current_weight' => $displayWeight,
+                    'current_height' => $displayHeight,
                     'bmi' => $bmi,
                     'nutrition_quality' => $profile->overall_diet_quality ?? 'N/A',
                     'weekly_workouts' => $profile->workout_week ?? '0 session',
@@ -121,30 +140,38 @@ class UserController extends Controller
     {
         $id = $userId ?: auth()->id();
         
-        $user = \App\Models\User::with(['profile', 'targetGoals', 'adjustProgram'])->find($id);
+        $user = User::with(['profile', 'targetGoals', 'adjustProgram'])->find($id);
         if (!$user) return response()->json(['message' => 'User not found'], 404);
 
+        $unit = $user->profile->unit ?? 'imperial'; // metric or imperial
         $startOfWeek = now()->startOfWeek()->toDateString();
         $endOfWeek = now()->endOfWeek()->toDateString();
 
         $activityLogs = DB::table('activity_logs')->where('user_id', $id)->whereBetween('log_date', [$startOfWeek, $endOfWeek])->get();
-        $hydrationLogs = DB::table('hydration_logs')->where('user_id', $id)->whereBetween('log_date', [$startOfWeek, $endOfWeek])->get();
         $nutritionLogs = DB::table('nutrition_logs')->where('user_id', $id)->whereBetween('log_date', [$startOfWeek, $endOfWeek])->get();
         $stressLogs = DB::table('stress_logs')->where('user_id', $id)->whereBetween('log_date', [$startOfWeek, $endOfWeek])->get();
 
+        // Basic Stats
         $totalSteps = $activityLogs->sum('daily_steps');
         $avgSleep = $activityLogs->avg('sleep_hours') ?? 0;
         $totalWater = $activityLogs->sum('water_glasses'); 
         
+        // Weight Logic (Latest from log or Profile)
         $latestWeight = $activityLogs->whereNotNull('weight')->last()->weight ?? ($user->profile->weight ?? 0);
-        $weightDiff = $latestWeight - ($user->targetGoals->target_weight ?? 0);
+        $targetWeight = $user->targetGoals->target_weight ?? 0;
+        $weightDiff = round($latestWeight - $targetWeight, 1);
 
+        // BMI Calculation (Standardized to Metric internal calculation)
         $bmi = 0;
-        if ($user->profile->height > 0 && $latestWeight > 0) {
-            $heightInMeters = $user->profile->height / 100;
-            $weightInKg = $latestWeight * 0.453592;
+        $height = $user->profile->height ?? 0; // assuming stored in CM
+        if ($height > 0 && $latestWeight > 0) {
+            $weightInKg = ($unit === 'imperial') ? $latestWeight * 0.453592 : $latestWeight;
+            $heightInMeters = $height / 100;
             $bmi = round($weightInKg / ($heightInMeters * $heightInMeters), 1);
         }
+
+        // Dynamic Unit Label
+        $unitLabel = ($unit === 'imperial') ? 'lbs' : 'kg';
 
         return response()->json([
             'success' => true,
@@ -153,18 +180,19 @@ class UserController extends Controller
                     'wellness_score' => $this->calculateWellnessScore($id), 
                     'days_active' => $activityLogs->unique('log_date')->count() . '/7',
                     'data_logged_entries' => $activityLogs->count() + $nutritionLogs->count() + $stressLogs->count(),
+                    'unit_system' => $unit
                 ],
 
                 'health_overview' => [
                     'weight' => [
-                        'current' => $latestWeight . ' lbs',
-                        'status' => $weightDiff > 0 ? "+{$weightDiff} lbs above ideal" : "On track",
-                        'coach_target' => ($user->targetGoals->target_weight ?? 'N/A') . ' lbs' 
+                        'current' => $latestWeight . ' ' . $unitLabel,
+                        'status' => $weightDiff > 0 ? "+{$weightDiff} {$unitLabel} above target" : "On track",
+                        'coach_target' => $targetWeight . ' ' . $unitLabel 
                     ],
                     'bmi' => [
                         'current' => $bmi,
-                        'status' => $bmi > 24.9 ? 'Higher than recommended' : 'Healthy range',
-                        'coach_target' => 26.0
+                        'status' => $this->getBmiStatus($bmi),
+                        'ideal_range' => '18.5 - 24.9'
                     ],
                     'nutrition' => [
                         'last_meal_balance' => $nutritionLogs->last()->meal_balance ?? 'N/A',
@@ -172,19 +200,19 @@ class UserController extends Controller
                         'note' => $user->adjustProgram->note ?? 'Follow coach plan'
                     ],
                     'daily_steps' => [
-                        'current' => $totalSteps,
-                        'coach_plan' => ($user->targetGoals->daily_step_goal ?? 0) . ' steps'
+                        'current' => number_format($totalSteps),
+                        'coach_plan' => number_format($user->targetGoals->daily_step_goal ?? 0) . ' steps'
                     ],
                     'sleep_hours' => [
                         'current' => round($avgSleep, 1) . ' Hrs',
-                        'coach_plan' => $user->adjustProgram->sleep_target_range ?? 'N/A'
+                        'coach_plan' => ($user->targetGoals->sleep_target ?? 'N/A') . ' Hrs'
                     ],
                     'hydration' => [
                         'current_glasses' => $totalWater,
-                        'target' => $user->adjustProgram->hydration_target ?? 'N/A'
+                        'target' => ($user->targetGoals->water_target ?? 'N/A') . ' glasses'
                     ],
                     'stress_and_mood' => [
-                        'latest_mood' => $stressLogs->last()->mood ?? 'normal',
+                        'latest_mood' => ucfirst($stressLogs->last()->mood ?? 'stable'),
                         'avg_stress_level' => round($stressLogs->avg('stress_level'), 1) ?? 0
                     ]
                 ],
@@ -195,6 +223,16 @@ class UserController extends Controller
                 ]
             ]
         ]);
+    }
+
+    /**
+     * Helper to determine BMI Status
+     */
+    private function getBmiStatus($bmi) {
+        if ($bmi < 18.5) return 'Underweight';
+        if ($bmi <= 24.9) return 'Healthy weight';
+        if ($bmi <= 29.9) return 'Overweight';
+        return 'Obese range';
     }
 
     private function calculateWellnessScore($userId)
@@ -225,15 +263,23 @@ class UserController extends Controller
         $user = User::with(['profile', 'medicalHistory', 'targetGoals', 'adjustProgram'])->find($id);
         if (!$user) return response()->json(['message' => 'User not found'], 404);
 
+        $unit = $user->profile->unit ?? 'imperial';
+        $unitLabel = ($unit === 'imperial') ? 'lbs' : 'kg';
+
         $activityLogs = DB::table('activity_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
         $nutritionLogs = DB::table('nutrition_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
         $stressLogs = DB::table('stress_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
 
-        $latestWeight = $activityLogs->last()->weight ?? ($user->profile->weight ?? 0);
+        // Weight Logic
+        $latestWeight = $activityLogs->whereNotNull('weight')->last()->weight ?? ($user->profile->weight ?? 0);
+        $targetWeight = $user->targetGoals->target_weight ?? 0;
+
+        // BMI Calculation
         $bmiScore = 0;
-        if ($user->profile->height > 0 && $latestWeight > 0) {
-            $heightInMeters = $user->profile->height / 100;
-            $weightInKg = $latestWeight * 0.453592; 
+        $height = $user->profile->height ?? 0;
+        if ($height > 0 && $latestWeight > 0) {
+            $weightInKg = ($unit === 'imperial') ? $latestWeight * 0.453592 : $latestWeight;
+            $heightInMeters = $height / 100;
             $bmiScore = round($weightInKg / ($heightInMeters * $heightInMeters), 1);
         }
 
@@ -244,28 +290,26 @@ class UserController extends Controller
             'success' => true,
             'health_overview' => [
                 'weight' => [
-                    'current' => $latestWeight . " lbs",
-                    'coach_target' => ($user->targetGoals->target_weight ?? 'N/A') . " lbs",
-                    'insight' => $user->targetGoals->notes ?? "Based on your fitness goals."
+                    'current' => $latestWeight . " " . $unitLabel,
+                    'coach_target' => $targetWeight . " " . $unitLabel,
+                    'insight' => $user->targetGoals->notes ?? "Stay consistent with your plan."
                 ],
                 'bmi' => [
                     'score' => $bmiScore,
                     'coach_target' => $user->targetGoals->target_bmi ?? 26.0, 
-                    'status_label' => $bmiScore > 24.9 ? "Higher than recommended range" : "Healthy range"
+                    'status_label' => $this->getBmiStatus($bmiScore)
                 ],
                 'nutrition_quality' => [
                     'score' => round($nutritionScore), 
                     'status' => $nutritionLogs->last()->meal_balance ?? 'Balanced',
-                    'coach_note' => $user->adjustPrograms->note ?? "Improve consistency on weekends" //
+                    'coach_note' => $user->adjustProgram->note ?? "Improve consistency on weekends"
                 ],
                 'daily_steps' => [
-                    'current' => (int) $activityLogs->avg('daily_steps'),
-                    
-                    'coach_plan' => ($user->targetGoals->daily_step_goal ?? 0) . " steps"
+                    'current' => (int) ($activityLogs->avg('daily_steps') ?? 0),
+                    'coach_plan' => number_format($user->targetGoals->daily_step_goal ?? 0) . " steps"
                 ],
                 'sleep_hours' => [
-                    'current' => round($activityLogs->avg('sleep_hours'), 1) . " Hrs",
-                    
+                    'current' => round($activityLogs->avg('sleep_hours') ?? 0, 1) . " Hrs",
                     'coach_plan' => $user->adjustProgram->sleep_target_range ?? '7-8 Hrs'
                 ]
             ]
@@ -282,19 +326,25 @@ class UserController extends Controller
         $user = User::with(['profile', 'targetGoals', 'adjustProgram'])->find($id);
         if (!$user) return response()->json(['message' => 'User not found'], 404);
 
+        $unit = $user->profile->unit ?? 'imperial';
+        $unitLabel = ($unit === 'imperial') ? 'lbs' : 'kg';
+
+        // Fetching All Logs
         $activityLogs = DB::table('activity_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
         $hydrationLogs = DB::table('hydration_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
         $sleepLogs = DB::table('sleep_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
         $stressLogs = DB::table('stress_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
         $nutritionLogs = DB::table('nutrition_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
 
-        $latestWeight = $activityLogs->last()->weight ?? ($user->profile->weight ?? 0);
-        $targetWeight = $user->targetGoals->target_weight ?? 190.0;
+        $latestWeight = $activityLogs->whereNotNull('weight')->last()->weight ?? ($user->profile->weight ?? 0);
+        $targetWeight = $user->targetGoals->target_weight ?? 0;
         
+        // BMI Logic
         $bmiScore = 0;
-        if ($user->profile->height > 0 && $latestWeight > 0) {
-            $heightInMeters = $user->profile->height / 100;
-            $weightInKg = $latestWeight * 0.453592;
+        $height = $user->profile->height ?? 0;
+        if ($height > 0 && $latestWeight > 0) {
+            $weightInKg = ($unit === 'imperial') ? $latestWeight * 0.453592 : $latestWeight;
+            $heightInMeters = $height / 100;
             $bmiScore = round($weightInKg / ($heightInMeters * $heightInMeters), 1);
         }
 
@@ -303,90 +353,75 @@ class UserController extends Controller
             'data' => [
                 'summary' => [
                     'wellness_score' => [
-                        'value' => 72, 
+                        'value' => $this->calculateWellnessScore($id), 
                         'max' => 100,
-                        'trend' => "+4 vs last week",
+                        'trend' => "Updated recently",
                         'label' => "Coach-tracked"
                     ],
                     'days_active' => [
                         'current' => $activityLogs->unique('log_date')->count(),
                         'total' => $days,
-                        'status' => "On track for your goal"
+                        'status' => "Activity log consistency"
                     ],
                     'data_logged' => [
                         'count' => $activityLogs->count() + $nutritionLogs->count() + $stressLogs->count(),
-                        'label' => "Entries this week"
+                        'label' => "Entries in selected period"
                     ]
                 ],
 
                 'health_overview' => [
                     'weight' => [
                         'current' => $latestWeight,
-                        'unit' => 'lbs',
-                        'diff_label' => ($latestWeight - $targetWeight) > 0 ? "+" . round($latestWeight - $targetWeight, 1) . " lbs above ideal" : "On track",
-                        'insight' => "Based on standard wellness ranges"
+                        'unit' => $unitLabel,
+                        'diff_label' => ($latestWeight - $targetWeight) > 0 ? "+" . round($latestWeight - $targetWeight, 1) . " $unitLabel above target" : "On track",
+                        'insight' => "Based on your target goal"
                     ],
                     'bmi' => [
                         'score' => $bmiScore,
                         'range' => "18.5 - 24.9",
-                        'status' => $bmiScore > 24.9 ? "Your Body fat is higher than the recommended range" : "Healthy range"
+                        'status' => $this->getBmiStatus($bmiScore)
                     ],
                     'nutrition' => [
-                        'score' => 80, 
+                        'score' => min(($nutritionLogs->count() / $days) * 100, 100), 
                         'status' => $nutritionLogs->last()->meal_balance ?? 'Balanced',
-                        'message' => "your meals are fuelling you well today"
+                        'message' => "Your meals are fueling you well"
                     ],
                     'workouts' => [
                         'completed' => $activityLogs->where('daily_steps', '>', 5000)->count(),
-                        'goal' => "4-5 sessions",
-                        'insight' => "Regular workouts help reach your wellness goal faster"
+                        'goal' => $user->targetGoals->workout_days_goal ?? "4-5 sessions",
+                        'insight' => "Workouts logged via steps/activity"
                     ],
                     'steps' => [
                         'current' => (int) ($activityLogs->avg('daily_steps') ?? 0),
-                        'goal' => ($user->targetGoals->daily_step_goal ?? 8000) . " steps",
-                        'insight' => "Increasing daily movement improves overall health"
+                        'goal' => ($user->targetGoals->daily_step_goal ?? 8000) . " steps"
                     ],
                     'sleep' => [
                         'avg' => round($sleepLogs->avg('sleep_hours') ?? 0, 1),
-                        'goal' => "7-9 hours",
-                        'insight' => "Quality sleep supports recovery & focus"
+                        'goal' => "7-9 hours"
                     ]
                 ],
 
                 'consistency_metrics' => [
-                    [
-                        'title' => 'Sleep',
-                        'avg' => round($sleepLogs->avg('sleep_hours'), 1) . " hrs avg this week",
-                        'status' => $sleepLogs->count() >= ($days * 0.7) ? "ON TRACK" : "Need Attention",
-                        'ratio' => $sleepLogs->count() . "/$days Days"
-                    ],
-                    [
-                        'title' => 'Activity',
-                        'avg' => number_format($activityLogs->avg('daily_steps') ?? 0) . " steps avg this week",
-                        'status' => ($activityLogs->avg('daily_steps') ?? 0) >= 8000 ? "ON TRACK" : "Need Attention",
-                        'ratio' => $activityLogs->count() . "/$days DAYS"
-                    ],
-                    [
-                        'title' => 'Hydration',
-                        'avg' => round($hydrationLogs->avg('water_glasses'), 1) . " glasses avg this week",
-                        'status' => $hydrationLogs->count() >= ($days * 0.7) ? "ON TRACK" : "Need Attention",
-                        'ratio' => $hydrationLogs->count() . "/$days DAYS"
-                    ],
-                    [
-                        'title' => 'Nutrition',
-                        'avg' => round($nutritionLogs->avg('protein_servings'), 1) . " serv/day avg this week",
-                        'status' => $nutritionLogs->count() >= ($days * 0.5) ? "ON TRACK" : "Need Attention",
-                        'ratio' => $nutritionLogs->count() . "/$days Days"
-                    ],
-                    [
-                        'title' => 'Stress',
-                        'avg' => round($stressLogs->avg('stress_level'), 1) . "/10 avg this week",
-                        'status' => $stressLogs->avg('stress_level') <= 3 ? "ON TRACK" : "Need Attention",
-                        'ratio' => $stressLogs->count() . "/$days DAYS"
-                    ]
+                    $this->formatMetric("Sleep", $sleepLogs->avg('sleep_hours'), "hrs avg", $sleepLogs->count(), $days),
+                    $this->formatMetric("Activity", $activityLogs->avg('daily_steps'), "steps avg", $activityLogs->count(), $days, true),
+                    $this->formatMetric("Hydration", $hydrationLogs->avg('water_glasses'), "glasses avg", $hydrationLogs->count(), $days),
+                    $this->formatMetric("Nutrition", $nutritionLogs->count(), "entries total", $nutritionLogs->count(), $days),
+                    $this->formatMetric("Stress", $stressLogs->avg('stress_level'), "/10 level", $stressLogs->count(), $days)
                 ]
             ]
         ]);
+    }
+
+    /** * Helper for Consistency Metrics formatting 
+     */
+    private function formatMetric($title, $avg, $suffix, $count, $days, $isSteps = false) {
+        $val = $isSteps ? number_format($avg ?? 0) : round($avg ?? 0, 1);
+        return [
+            'title' => $title,
+            'avg' => "$val $suffix",
+            'status' => $count >= ($days * 0.6) ? "ON TRACK" : "Need Attention",
+            'ratio' => "$count/$days Days"
+        ];
     }
 
     public function toggleActiveUser($userId)
@@ -419,26 +454,37 @@ class UserController extends Controller
 
         if (!$user) return response()->json(['message' => 'User not found'], 404);
 
+        $unit = $user->profile->unit ?? 'imperial';
+        $unitLabel = ($unit === 'imperial') ? 'lbs' : 'kg';
+
+        // Logs Fetching (Using your new AI Nutrition Model)
         $activityLogs = DB::table('activity_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
-        $nutritionLogs = DB::table('nutrition_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
         $sleepLogs = DB::table('sleep_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
+        
+        // Fetching from UserNutritionCalculate table
+        $nutritionLogs = \App\Models\AI\UserNutritionCalculate::where('user_id', $id)
+                            ->whereBetween('log_date', [$startDate, $endDate])
+                            ->get();
         
         $target = $user->targetGoals;
         $latestWeight = $activityLogs->last()->weight ?? ($user->profile->weight ?? 0);
         $targetWeight = $target->target_weight ?? 0;
         
+        // BMI Calculation
         $bmiScore = 0;
-        if (($user->profile->height ?? 0) > 0 && $latestWeight > 0) {
-            $heightInMeters = $user->profile->height / 100;
-            $weightInKg = $latestWeight * 0.453592;
+        $height = $user->profile->height ?? 0;
+        if ($height > 0 && $latestWeight > 0) {
+            $weightInKg = ($unit === 'imperial') ? $latestWeight * 0.453592 : $latestWeight;
+            $heightInMeters = $height / 100;
             $bmiScore = round($weightInKg / ($heightInMeters * $heightInMeters), 1);
         }
 
-        $totalPossibleLogs = $days * 5;
-        $actualLogs = $activityLogs->count() + $nutritionLogs->count() + $sleepLogs->count();
-        $wellnessScore = $totalPossibleLogs > 0 ? min(round(($actualLogs / $totalPossibleLogs) * 100), 100) : 0;
+        $actualLogsCount = $activityLogs->count() + $nutritionLogs->count() + $sleepLogs->count();
+        $totalPossibleLogs = $days * 3; 
+        $wellnessScore = $totalPossibleLogs > 0 ? min(round(($actualLogsCount / $totalPossibleLogs) * 100), 100) : 0;
 
-        $nutritionScore = round($nutritionLogs->avg('quality_score') ?? 0); 
+        $avgProtein = $nutritionLogs->avg('protein_value') ?? 0;
+        $nutritionQuality = $nutritionLogs->count() > 0 ? min(round(($nutritionLogs->count() / $days) * 100), 100) : 0;
 
         return response()->json([
             'success' => true,
@@ -447,57 +493,43 @@ class UserController extends Controller
                     'wellness_score' => [
                         'score' => $wellnessScore,
                         'max' => 100,
-                        'trend' => $wellnessScore >= 70 ? "+4 vs last week" : "-2 vs last week", 
-                        'footer' => "Coach-tracked"
+                        'trend' => $wellnessScore >= 70 ? "+4% vs last week" : "Needs attention", 
+                        'footer' => "Based on logging consistency"
                     ],
                     'days_active' => [
                         'current' => $activityLogs->unique('log_date')->count(),
                         'total' => $days,
-                        'status' => $activityLogs->count() >= ($target->weekly_workout_goal ?? 5) ? "On track" : "Behind schedule",
-                        'footer' => "Based on coach plan"
+                        'status' => $activityLogs->unique('log_date')->count() >= ($target->weekly_workout_goal ?? 5) ? "On track" : "Behind schedule"
                     ],
                     'data_logged' => [
-                        'count' => $actualLogs,
-                        'label' => "Entries this week"
+                        'count' => $actualLogsCount,
+                        'label' => "AI-Analyzed Entries"
                     ]
                 ],
 
                 'health_overview' => [
                     'weight' => [
-                        'current' => $latestWeight . " lbs",
-                        'diff' => ($latestWeight - $targetWeight > 0 ? "+" : "") . round($latestWeight - $targetWeight, 1) . " lbs above ideal",
-                        'coach_target' => "Coach target: " . ($targetWeight ?: 'N/A') . " lbs",
-                        'insight' => $latestWeight > $targetWeight ? "Gradual fat loss prioritized." : "Maintaining healthy weight."
+                        'current' => $latestWeight . " " . $unitLabel,
+                        'diff' => ($latestWeight - $targetWeight > 0 ? "+" : "") . round($latestWeight - $targetWeight, 1) . " $unitLabel from target",
+                        'coach_target' => ($targetWeight ?: 'N/A') . " " . $unitLabel
                     ],
                     'bmi' => [
                         'score' => $bmiScore,
-                        'range' => "Healthy range: 18.5 - 24.9",
-                        'status' => $bmiScore > 24.9 ? "Higher than recommended range" : "Within healthy range",
-                        'coach_target' => "Coach target: 26.0" 
+                        'status' => $this->getBmiStatus($bmiScore)
                     ],
-                    'workouts' => [
-                        'count' => ($user->adjustProgram ? $user->adjustProgram->where('weekly_workouts', 1)->count() : 0) . " session", 
-                        'recommendation' => "Recommended " . ($target->weekly_workout_goal ?? '5') . " sessions",
-                        'coach_plan' => "Coach Plan : " . ($target->weekly_workout_goal ?? '5') . " session/week",
-                        'note' => "Volume adjusted for recovery"
-                    ],
-
                     'nutrition' => [
-                        'quality' => "$nutritionScore/100",
-                        'status' => $nutritionScore >= 70 ? "Balanced" : "Needs Improvement",
-                        'meta' => $nutritionLogs->last()->description ?? "Meals tracked today",
-                        'coach_note' => optional($user->adjustProgram)->nutrition_note ?? "Improve consistency on weekends"
+                        'quality' => "$nutritionQuality/100",
+                        'status' => $nutritionQuality >= 70 ? "Consistent" : "Inconsistent logging",
+                        'last_meal' => $nutritionLogs->last() ? implode(', ', (array)$nutritionLogs->last()->foods) : "No meals logged today",
+                        'avg_calories' => round($nutritionLogs->avg('calories_value')) . " kcal/day"
                     ],
                     'steps' => [
                         'avg' => (int) ($activityLogs->avg('daily_steps') ?? 0),
-                        'status' => "Based on current log data",
-                        'coach_plan' => "Coach Plan : " . number_format($target->daily_step_goal ?? 0) . " steps",
-                        'note' => "Increase gradually to avoid fatigue."
+                        'coach_plan' => number_format($target->daily_step_goal ?? 0) . " steps"
                     ],
                     'sleep' => [
                         'avg' => round($sleepLogs->avg('sleep_hours') ?? 0, 1) . " Hrs",
-                        'status' => "Based on current log data",
-                        'coach_plan' => "Coach Plan : " . ($target->sleep_target ?? '7.5 - 8') . " Hrs"
+                        'coach_plan' => ($target->sleep_target ?? '7-8') . " Hrs"
                     ]
                 ]
             ]
@@ -846,7 +878,7 @@ class UserController extends Controller
             $coach = auth()->user(); 
             $coachId = $coach->id;
 
-            $todaysCheckinsCount = \App\Models\Schedule::where('trainer_id', $coachId)
+            $todaysCheckinsCount = Schedule::where('trainer_id', $coachId)
                 ->whereDate('schedule_date', now()->today())
                 ->count();
 
@@ -941,16 +973,13 @@ class UserController extends Controller
             $user = auth()->user();
             $professionId = $request->profession_id;
 
-            // ২. নিজেকে কানেক্ট করা রোধ করা
             if ($user->id == $professionId) {
                 return response()->json(['success' => false, 'message' => "You can't connect to yourself"], 400);
             }
 
-            // ৩. কানেকশন তৈরি (ডুপ্লিকেট হবে না)
             $user->myProfessionals()->syncWithoutDetaching([$professionId]);
 
-            // ৪. কানেক্টেড ইউজারের তথ্য তুলে আনা
-            $connectedUser = \App\Models\User::with('profile')->find($professionId);
+            $connectedUser = User::with('profile')->find($professionId);
 
             return response()->json([
                 'success' => true,
@@ -960,7 +989,7 @@ class UserController extends Controller
                         'connected_at' => now()->format('Y-m-d H:i:s'),
                         'status'       => 'active'
                     ],
-                    'professional_info' => [ // এখানে ইউজারের ফুল ইনফরমেশন
+                    'professional_info' => [
                         'id'            => $connectedUser->id,
                         'name'          => $connectedUser->name,
                         'email'         => $connectedUser->email,

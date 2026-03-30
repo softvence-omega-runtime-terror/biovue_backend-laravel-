@@ -18,8 +18,8 @@ return new class extends Migration
             // Demographics 
             $table->integer('age')->nullable(); 
             $table->string('sex', 20)->nullable(); 
-            $table->integer('height')->nullable(); 
-            $table->integer('weight')->nullable(); 
+            $table->float('height', 10, 2)->nullable(); 
+            $table->float('weight', 10, 2)->nullable(); 
             $table->enum('unit', ['metric', 'imperial'])->default('imperial');
             $table->string('body_fat', 20)->nullable(); 
             $table->string('location')->nullable(); 
