@@ -122,8 +122,9 @@ class TrainerController extends Controller
     public function storeTrainerNote(Request $request)
     {
         $request->validate([
+            'id'      => 'nullable|integer|exists:profession_notes,id',
             'user_id' => 'required|exists:users,id',
-            'note' => 'required|string',
+            'note'    => 'required|string',
         ]);
 
         $professionId = auth()->id();
@@ -134,18 +135,48 @@ class TrainerController extends Controller
             ->exists();
 
         if (!$isConnected && auth()->user()->user_type !== 'admin') {
-            return response()->json(['success' => false, 'message' => 'Unauthorized: You are not connected to this user.'], 403);
+            return response()->json([
+                'success' => false, 
+                'message' => 'Unauthorized: You are not connected to this user.'
+            ], 403);
         }
 
-        $noteId = DB::table('profession_notes')->insertGetId([
-            'profession_id' => $professionId,
-            'user_id' => $request->user_id,
-            'note' => $request->note,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        try {
+            if ($request->filled('id')) {
+                DB::table('profession_notes')
+                    ->where('id', $request->id)
+                    ->where('profession_id', $professionId) 
+                    ->update([
+                        'note'       => $request->note,
+                        'updated_at' => now(),
+                    ]);
 
-        return response()->json(['success' => true, 'message' => 'Note added successfully', 'note_id' => $noteId], 201);
+                $message = 'Note updated successfully';
+                $noteId  = $request->id;
+            } else {
+                $noteId = DB::table('profession_notes')->insertGetId([
+                    'profession_id' => $professionId,
+                    'user_id'       => $request->user_id,
+                    'note'          => $request->note,
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                ]);
+
+                $message = 'Note added successfully';
+            }
+
+            return response()->json([
+                'success' => true, 
+                'message' => $message, 
+                'note_id' => $noteId
+            ], $request->filled('id') ? 200 : 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
    
