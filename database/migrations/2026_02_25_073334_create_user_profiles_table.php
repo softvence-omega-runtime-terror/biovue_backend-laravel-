@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('sex', 20)->nullable(); 
             $table->integer('height')->nullable(); 
             $table->integer('weight')->nullable(); 
+            $table->enum('unit', ['metric', 'imperial'])->default('imperial');
             $table->string('body_fat', 20)->nullable(); 
             $table->string('location')->nullable(); 
             $table->boolean('agreed_terms')->default(false); 

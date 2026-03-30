@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name'); 
             $table->enum('plan_type', ['individual', 'professional'])->default('individual');
             $table->foreignId('user_id')->constrained()->onDelete('cascade'); 
-            $table->enum('billing_cycle', ['days', 'monthly', 'annual', 'custom']);
+            $table->enum('billing_cycle', ['days', 'monthly', 'half_annual', 'annual', 'custom']);
             $table->decimal('price', 10, 2)->default(0.00);
             $table->integer('duration')->nullable(); 
             $table->integer('member_limit')->nullable(); 

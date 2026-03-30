@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\ProjectionCredit;
 use App\Models\Schedule;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -12,7 +13,11 @@ class UserController extends Controller
 {
     public function index()
     {
+        $projectionCredits = ProjectionCredit::all()->keyBy('user_id');
         $users = User::with('profile', 'medicalHistory')->get();
+        foreach ($users as $user) {
+            $user->projection_limit = $projectionCredits->get($user->id)->projection_limit ?? 0;
+        }
         return response()->json($users);
     }
 
@@ -973,29 +978,35 @@ class UserController extends Controller
         }
     }   
 
-    public function getMyConnections()
+    public function getMyConnections(Request $request)
     {
         try {
-            $user = auth()->user(); 
+            $targetUserId = $this->getUserId($request);
+            $targetUser = User::find($targetUserId);
 
-            if ($user->user_type === 'professional' || $user->user_type === 'trainer' || $user->user_type === 'coach') {
+            if (!$targetUser) {
+                return response()->json(['success' => false, 'message' => 'User not found'], 404);
+            }
+
+            if (in_array($targetUser->user_type, ['professional', 'trainer', 'coach'])) {
                 
-                $connections = $user->belongsToMany(User::class, 'connect_user_proffesions', 'profession_id', 'user_id')
-                                    ->get(['users.id', 'users.name', 'users.email']); 
-                $message = "Your connected clients";
+                $connections = $targetUser->belongsToMany(User::class, 'connect_user_proffesions', 'profession_id', 'user_id')
+                                        ->get(['users.id', 'users.name', 'users.email']); 
+                $message = "Connected clients for " . $targetUser->name;
             } 
             else {
-                $connections = $user->belongsToMany(User::class, 'connect_user_proffesions', 'user_id', 'profession_id')
-                                    ->get(['users.id', 'users.name', 'users.email']); 
-                $message = "Professionals you are following";
+                $connections = $targetUser->belongsToMany(User::class, 'connect_user_proffesions', 'user_id', 'profession_id')
+                                        ->get(['users.id', 'users.name', 'users.email']); 
+                $message = "Professionals followed by " . $targetUser->name;
             }
 
             return response()->json([
                 'success' => true,
                 'message' => $message,
-                'current_user' => [
-                    'id' => $user->id,
-                    'type' => $user->user_type
+                'queried_user' => [
+                    'id' => $targetUser->id,
+                    'type' => $targetUser->user_type,
+                    'name' => $targetUser->name
                 ],
                 'count' => $connections->count(),
                 'data' => $connections

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\ProjectionCredit;
 use App\Models\User;
 use App\Models\UserMedicalHistory;
 use App\Models\UserProfile;
@@ -14,7 +15,11 @@ class UserProfileController extends Controller
 {
     public function index()
     {
+        $projectionCredits = ProjectionCredit::all()->keyBy('user_id');
         $profiles = UserProfile::with('user', 'user.medicalHistory')->get();
+        foreach ($profiles as $profile) {
+            $profile->user->projection_limit = $projectionCredits->get($profile->user->id)->projection_limit ?? 0;
+        }
         return response()->json($profiles);
     }
 
@@ -125,6 +130,10 @@ class UserProfileController extends Controller
     public function showByUserId($userId)
     {
         $user = User::with('profile', 'medicalHistory')->findOrFail($userId);
+
+        $projectionCredits = ProjectionCredit::where('user_id', $userId)->first();
+
+        $user->projection_limit = $projectionCredits ? $projectionCredits->projection_limit : 0;
 
         return response()->json([
             'success' => true,
