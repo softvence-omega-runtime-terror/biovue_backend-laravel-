@@ -8,11 +8,13 @@ use GPBMetadata\Google\Api\Auth;
 use Illuminate\Http\Request;
 use App\Models\PlanPayment;
 use App\Models\Plan;
+use App\Models\ProjectionCredit;
 use Stripe\StripeClient;
 use Stripe\Webhook;
 use Stripe\Exception\SignatureVerificationException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 
 class PlanPaymentController extends Controller
@@ -150,7 +152,7 @@ class PlanPaymentController extends Controller
     {
         $request->validate([
             'plan_id' => 'required|exists:plans,id',
-            'billing' => 'required|in:monthly,annual',
+            'billing' => 'required|in:monthly,half_annual,annual,custom',
         ]);
 
         $plan = Plan::findOrFail($request->plan_id);
@@ -165,6 +167,8 @@ class PlanPaymentController extends Controller
 
         if ($request->billing === 'annual') {
             $durationDays = 365;
+        } elseif ($request->billing === 'half_annual') {
+            $durationDays = 180;
         } elseif ($request->billing === 'monthly') {
             $durationDays = 30;
         } else {
@@ -247,7 +251,7 @@ class PlanPaymentController extends Controller
     {
         $request->validate([
             'plan_id' => 'required|exists:plans,id',
-            'billing' => 'required|in:monthly,annual',
+            'billing' => 'required|in:monthly,half_annual,annual,custom',
         ]);
 
         $plan = Plan::findOrFail($request->plan_id);
@@ -265,6 +269,9 @@ class PlanPaymentController extends Controller
 
         if ($request->billing === 'annual') {
             $durationDays = 365;
+        }elseif ($request->billing === 'half_annual') {
+            $durationDays = 180;
+        
         } elseif ($request->billing === 'monthly') {
             $durationDays = 30;
         } else {
@@ -379,13 +386,11 @@ class PlanPaymentController extends Controller
 
         if (!$session) return response('Invalid Payload', 400);
 
-        // Metadata theke ID integer cast kore nin
         $paymentId = (int) ($session->metadata->payment_id ?? 0);
 
         try {
             DB::beginTransaction();
 
-            // Database theke record khuje ber kora
             $payment = PlanPayment::where('id', $paymentId)->lockForUpdate()->first();
 
             if (!$payment) {
@@ -393,7 +398,6 @@ class PlanPaymentController extends Controller
                 return response('Payment record not found', 404);
             }
 
-            // Status update logic
             $payment->update([
                 'status'            => 'paid',
                 'stripe_session_id' => $session->id,
@@ -470,6 +474,80 @@ class PlanPaymentController extends Controller
         } catch (\Exception $e) {
             \Log::error('Stripe Webhook error', ['error' => $e->getMessage()]);
             return response('Webhook error: ' . $e->getMessage(), 400);
+        }
+    }
+
+    public function handleStripeWebhook(Request $request)
+    {
+        $payload = $request->getContent();
+        $sigHeader = $request->header('Stripe-Signature');
+        $endpointSecret = config('services.stripe.webhook_secret');
+
+        try {
+            $event = Webhook::constructEvent($payload, $sigHeader, $endpointSecret);
+
+            if (!in_array($event->type, ['checkout.session.completed', 'payment_intent.succeeded'])) {
+                return response('Event ignored', 200);
+            }
+
+            $session = $event->data->object;
+            $paymentId = $session->metadata->payment_id ?? null;
+
+            if (!$paymentId) {
+                return response('Missing payment ID in metadata', 400);
+            }
+
+            DB::beginTransaction();
+
+            $payment = PlanPayment::where('id', $paymentId)->lockForUpdate()->first();
+
+            if (!$payment) {
+                DB::rollBack();
+                return response('Payment record not found', 404);
+            }
+
+            if ($payment->status === 'paid') {
+                DB::commit();
+                return response('Already processed', 200);
+            }
+
+            $payment->update([
+                'status'            => 'paid',
+                'stripe_session_id' => $session->id,
+                'start_date'        => Carbon::now(),
+                'end_date'          => ($payment->billing === 'annual') ? Carbon::now()->addYear() : Carbon::now()->addMonth(),
+            ]);
+
+            if ($payment->user) {
+                $payment->user->update(['plan_id' => $payment->plan_id]);
+
+                $projectionCredit = ProjectionCredit::firstOrNew(['user_id' => $payment->user_id]);
+                
+                $projectionCredit->member_limit = ($projectionCredit->member_limit ?? 0) + ($payment->plan->member_limit ?? 0);
+                $projectionCredit->projection_limit = ($projectionCredit->projection_limit ?? 0) + ($payment->plan->projection_limit ?? 0);
+                $projectionCredit->updated_at = Carbon::now();
+                $projectionCredit->save();
+
+                try {
+                    $payment->user->notify(new \App\Notifications\InsightNotification('Payment Success', 'Your subscription has been activated', 'payment_success'));
+                } catch (\Exception $e) {
+                    Log::warning('Webhook Notification failed: ' . $e->getMessage());
+                }
+            }
+
+            DB::commit();
+            return response('Webhook Handled Successfully', 200);
+
+        } catch (\Stripe\Exception\SignatureVerificationException $e) {
+
+            return response('Invalid Signature', 400);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Stripe Webhook Error: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            return response('Webhook Error', 500);
         }
     }
 }

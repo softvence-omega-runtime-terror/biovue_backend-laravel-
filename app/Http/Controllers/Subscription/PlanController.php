@@ -15,10 +15,10 @@ class PlanController extends Controller
     {
         try {
             $type = $request->query('type');       // individual / professional
-            $billing = strtolower($request->query('billing', 'monthly')); // monthly/annual, default monthly
+            $billing = strtolower($request->query('billing', 'monthly')); // monthly/half_annual/annual, default monthly
 
             // Validate billing param
-            if (!in_array($billing, ['monthly', 'annual'])) {
+            if (!in_array($billing, ['monthly', 'half_annual', 'annual'])) {
                 $billing = 'monthly';
             }
 
@@ -64,7 +64,7 @@ class PlanController extends Controller
             'id' => 'nullable|integer|exists:plans,id', // optional for update
             'name' => 'required|string|max:255',
             'plan_type' => 'required|in:individual,professional',
-            'billing_cycle' => 'required|in:days,monthly,annual,custom',
+            'billing_cycle' => 'required|in:days,monthly,half_annual,annual,custom',
             'price' => 'required|numeric|min:0',
             'duration' => 'nullable|integer',
             'member_limit' => 'nullable|integer',
