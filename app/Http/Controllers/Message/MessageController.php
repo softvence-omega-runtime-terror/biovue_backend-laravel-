@@ -43,9 +43,9 @@ class MessageController extends Controller
         }
         else
         {
-            if ($receiver->profession_type == 'trainer_coach' && $notificationSettings && $notificationSettings->client_messages == 1)
+            if ($notificationSettings && $notificationSettings->client_messages == 1)
             {
-                $receiver->notify(new ClientMessageNotification('new Client Message',$request->message,'coach_message'));
+                $receiver->notify(new ClientMessageNotification('new Client Message',$request->message,'client_message'));
             }
             else
             {
