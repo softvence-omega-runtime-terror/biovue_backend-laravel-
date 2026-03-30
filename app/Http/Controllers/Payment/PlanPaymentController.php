@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Payment;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Notifications\AdminNotification;
 use App\Notifications\SubscriptionNotification;
 use GPBMetadata\Google\Api\Auth;
 use Illuminate\Http\Request;
@@ -206,7 +208,7 @@ class PlanPaymentController extends Controller
                 ]);
             }
 
- 
+
             $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
 
             $session = $stripe->checkout->sessions->create([
@@ -355,6 +357,10 @@ class PlanPaymentController extends Controller
     {
         $user = auth()->user();
 
+        $admin = User::find(1);
+
+        $admin->notify(new AdminNotification('New Subscription', "$user->name is onboarded",'subscription_message'));
+
         $user->notify(new SubscriptionNotification('New Subscription', 'Your Subscription Is Successful','subscription_message'));
 
         return response()->json([
@@ -413,7 +419,7 @@ class PlanPaymentController extends Controller
                 $projectionCredit->projection_limit = ($projectionCredit->projection_limit ?? 0) + $payment->plan->projection_limit;
                 $projectionCredit->updated_at = now();
 
-                $projectionCredit->save(); 
+                $projectionCredit->save();
             }
 
             DB::commit();
@@ -422,7 +428,7 @@ class PlanPaymentController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Stripe Webhook DB Error: ' . $e->getMessage());
-            
+
             // Exact error dekhar jonno Postman-e eita return korun
             return response()->json([
                 'message' => $e->getMessage(),
@@ -431,7 +437,7 @@ class PlanPaymentController extends Controller
             ], 500);
         }
     }
-    
+
     public function handleWebhook(Request $request)
     {
         $payload   = $request->getContent();

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Message;
 use App\Events\MessageSent;
 use App\Models\User;
+use App\Models\UserNotificationSetting;
 use App\Notifications\ClientMessageNotification;
 use App\Notifications\CoachMessageNotification;
 use Illuminate\Http\Request;
@@ -34,15 +35,17 @@ class MessageController extends Controller
 
 //        return $receiver->notificationSettings;
 
-        if($receiver->user_type == 'individual')
+        $notificationSettings = UserNotificationSetting::where('user_id',$request->receiver_id)->first();
+
+        if($receiver->user_type == 'individual' && $notificationSettings && $notificationSettings->coach_messages == 1)
         {
             $receiver->notify(new CoachMessageNotification('new Coach Message',$request->message,'coach_message'));
         }
         else
         {
-            if ($receiver->profession_type == 'trainer_coach')
+            if ($notificationSettings && $notificationSettings->client_messages == 1)
             {
-                $receiver->notify(new ClientMessageNotification('new Client Message',$request->message,'coach_message'));
+                $receiver->notify(new ClientMessageNotification('new Client Message',$request->message,'client_message'));
             }
             else
             {
