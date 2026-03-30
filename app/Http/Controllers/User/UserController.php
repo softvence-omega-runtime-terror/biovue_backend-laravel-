@@ -457,11 +457,10 @@ class UserController extends Controller
         $unit = $user->profile->unit ?? 'imperial';
         $unitLabel = ($unit === 'imperial') ? 'lbs' : 'kg';
 
-        // Logs Fetching (Using your new AI Nutrition Model)
         $activityLogs = DB::table('activity_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
         $sleepLogs = DB::table('sleep_logs')->where('user_id', $id)->whereBetween('log_date', [$startDate, $endDate])->get();
         
-        // Fetching from UserNutritionCalculate table
+        // Fetching using Model to leverage $casts
         $nutritionLogs = \App\Models\AI\UserNutritionCalculate::where('user_id', $id)
                             ->whereBetween('log_date', [$startDate, $endDate])
                             ->get();
@@ -483,7 +482,6 @@ class UserController extends Controller
         $totalPossibleLogs = $days * 3; 
         $wellnessScore = $totalPossibleLogs > 0 ? min(round(($actualLogsCount / $totalPossibleLogs) * 100), 100) : 0;
 
-        $avgProtein = $nutritionLogs->avg('protein_value') ?? 0;
         $nutritionQuality = $nutritionLogs->count() > 0 ? min(round(($nutritionLogs->count() / $days) * 100), 100) : 0;
 
         return response()->json([
@@ -515,13 +513,21 @@ class UserController extends Controller
                     ],
                     'bmi' => [
                         'score' => $bmiScore,
-                        'status' => $this->getBmiStatus($bmiScore)
+                        'status' => method_exists($this, 'getBmiStatus') ? $this->getBmiStatus($bmiScore) : 'N/A'
                     ],
                     'nutrition' => [
                         'quality' => "$nutritionQuality/100",
                         'status' => $nutritionQuality >= 70 ? "Consistent" : "Inconsistent logging",
-                        'last_meal' => $nutritionLogs->last() ? implode(', ', (array)$nutritionLogs->last()->foods) : "No meals logged today",
-                        'avg_calories' => round($nutritionLogs->avg('calories_value')) . " kcal/day"
+                        'last_meal' => $nutritionLogs->last() ? (function($foods) {
+                                $decoded = is_string($foods) ? json_decode($foods, true) : $foods;
+                                
+                                $flattened = collect($decoded)->flatten()->toArray();
+                                
+                                if (empty($flattened)) return "Meal tracked";
+
+                                return implode(', ', $flattened);
+                            })($nutritionLogs->last()->foods) : "No meals logged today",
+                        'avg_calories' => round($nutritionLogs->avg('calories_value') ?? 0) . " kcal/day"
                     ],
                     'steps' => [
                         'avg' => (int) ($activityLogs->avg('daily_steps') ?? 0),
@@ -535,6 +541,17 @@ class UserController extends Controller
             ]
         ]);
     }
+
+/**
+ * Helper to safely format foods array/json to string
+ */
+private function formatFoods($foods)
+{
+    if (is_string($foods)) {
+        $foods = json_decode($foods, true);
+    }
+    return is_array($foods) ? implode(', ', $foods) : "Meal tracked";
+}
 
     private function formatConsistency($title, $logs, $totalDays, $target, $column = 'sleep_hours', $isStress = false)
     {
