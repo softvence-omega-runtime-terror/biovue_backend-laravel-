@@ -28,7 +28,6 @@ class PlansSeeder extends Seeder
                 'duration' => 7,
                 'price' => 0,
                 'member_limit' => null,
-                'projection_limit' => 1,
                 'status' => true,
                 'features' => [
                     'Upload 1 body photo',
@@ -50,7 +49,6 @@ class PlansSeeder extends Seeder
                 'duration' => null,
                 'price' => 29,
                 'member_limit' => null,
-                'projection_limit' => 2,
                 'status' => true,
                 'features' => [
                     'Up to 2 AI body projections',
@@ -72,7 +70,6 @@ class PlansSeeder extends Seeder
                 'duration' => null,
                 'price' => 35,
                 'member_limit' => null,
-                'projection_limit' => 4,
                 'status' => true,
                 'features' => [
                     'EVERYTHING IN PLUS',
@@ -96,7 +93,6 @@ class PlansSeeder extends Seeder
                 'duration' => null,
                 'price' => 250,
                 'member_limit' => 8,
-                'projection_limit' => 16,
                 'status' => true,
                 'features' => [
                     'Up to 8 client accounts',
@@ -118,7 +114,6 @@ class PlansSeeder extends Seeder
                 'duration' => null,
                 'price' => 750,
                 'member_limit' => 25,
-                'projection_limit' => 50,
                 'status' => true,
                 'features' => [
                     'Up to 25 client accounts',
@@ -141,7 +136,6 @@ class PlansSeeder extends Seeder
                 'duration' => null,
                 'price' => 3500,
                 'member_limit' => 150,
-                'projection_limit' => 600,
                 'status' => true,
                 'features' => [
                     'Up to 150 client accounts',
@@ -161,8 +155,7 @@ class PlansSeeder extends Seeder
                 'billing_cycle' => 'custom',
                 'duration' => null,
                 'price' => 0,
-                'member_limit' => 'Discussion',
-                'projection_limit' => 'Discussion',
+                'member_limit' => null,
                 'status' => true,
                 'features' => [
                     'Unlimited client accounts',
