@@ -30,7 +30,7 @@ class UserProfileController extends Controller
             'name'    => 'nullable|string|max:255',
             'user_type'       => 'required|in:individual,professional',
             'profession_type' => 'nullable|string|in:trainer_coach,nutritionist,supplement_supplier',
-
+            'unit'             => 'nullable|string|in:metric,imperial',
             'age'              => 'nullable|integer',
             'sex'              => 'nullable|string|max:20',
             'image'            => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
