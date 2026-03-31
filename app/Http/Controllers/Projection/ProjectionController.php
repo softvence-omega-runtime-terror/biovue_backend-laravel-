@@ -54,14 +54,18 @@ class ProjectionController extends Controller
                     'current_lifestyle' => [
                         'label'            => "Current lifestyle trajectory for " . $projection->timeframe,
                         'image'            => $aiDomain . ($pData['current_lifestyle']['projection_url'] ?? ''),
+                        'timeframe'        => $projection->timeframe,
                         'est_bmi'          => $pData['current_lifestyle']['est_bmi'] ?? 'N/A',
                         'est_weight'       => $pData['current_lifestyle']['est_weight'] ?? 'N/A',
+                        'expected_changes' => $pData['current_lifestyle']['expected_changes'] ?? [],
                     ],
                     'future_goal' => [
                         'label'            => "Target goal achievement in " . $projection->timeframe,
                         'image'            => $aiDomain . ($pData['future_goal']['projection_url'] ?? ''),
+                        'timeframe'        => $projection->timeframe,
                         'est_bmi'          => $pData['future_goal']['est_bmi'] ?? 'N/A',
                         'est_weight'       => $pData['future_goal']['est_weight'] ?? 'N/A',
+                        'expected_changes' => $pData['future_goal']['expected_changes'] ?? [],
                     ]
                 ],
                 'created_at' => $projection->created_at->format('Y-m-d')
