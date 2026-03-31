@@ -282,6 +282,8 @@ Route::prefix('v1')->group(function () {
         // Projections
         Route::post('/generate/projections', [ProjectionController::class, 'generateProjection']);
         Route::get('/projections/{id}', [ProjectionController::class, 'show']);
+        
+        Route::get('/my-projections', [ProjectionController::class, 'index']);
 
         Route::get('/user/notification', [NotificationController::class, 'getSettings']);
         Route::post('/user/notification-settings', [NotificationController::class, 'updateSettings']);

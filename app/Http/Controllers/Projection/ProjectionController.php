@@ -12,6 +12,69 @@ use Illuminate\Support\Facades\Log;
 
 class ProjectionController extends Controller
 {
+    public function index()
+    {
+        $user = auth()->user();
+
+        $daysSinceJoined = now()->diffInDays($user->created_at);
+        $hasPlan = $user->adjustProgram()->exists();
+
+        if ($daysSinceJoined > 7 && !$hasPlan) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your access period has expired. Please subscribe to a plan to view your projections.',
+                'locked' => true
+            ], 403);
+        }
+
+        $projections = ProjectionData::where('user_id', $user->id)
+            ->latest()
+            ->get();
+
+        if ($projections->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'No projections found.',
+                'data' => []
+            ]);
+        }
+
+        $aiDomain = "https://ai.biovuedigitalwellness.com/api/v1/";
+
+        $formattedData = $projections->map(function($projection) use ($aiDomain) {
+            $pData = $projection->projections_data;
+
+            return [
+                'id' => $projection->id,
+                'title'   => 'Projection Results',
+                'timeframe' => $projection->timeframe,
+                'input_image' => asset('storage/' . $projection->input_image), 
+
+                'projections' => [
+                    'current_lifestyle' => [
+                        'label'            => "Current lifestyle trajectory for " . $projection->timeframe,
+                        'image'            => $aiDomain . ($pData['current_lifestyle']['projection_url'] ?? ''),
+                        'est_bmi'          => $pData['current_lifestyle']['est_bmi'] ?? 'N/A',
+                        'est_weight'       => $pData['current_lifestyle']['est_weight'] ?? 'N/A',
+                    ],
+                    'future_goal' => [
+                        'label'            => "Target goal achievement in " . $projection->timeframe,
+                        'image'            => $aiDomain . ($pData['future_goal']['projection_url'] ?? ''),
+                        'est_bmi'          => $pData['future_goal']['est_bmi'] ?? 'N/A',
+                        'est_weight'       => $pData['future_goal']['est_weight'] ?? 'N/A',
+                    ]
+                ],
+                'created_at' => $projection->created_at->format('Y-m-d')
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $formattedData
+        ]);
+    }
+
+
     public function generateProjection(Request $request)
     {
         // 1. Validating incoming request from your frontend/mobile
