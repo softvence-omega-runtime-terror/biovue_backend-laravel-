@@ -85,7 +85,8 @@ Route::prefix('v1')->group(function () {
     Route::get('getUserProjectionData/{userId}', [ProjectionFutureGoalController::class, 'getUserProjectionData']);
 
     // Stripe Webhook
-        Route::post('payment/webhook', [PlanPaymentController::class, 'handleWebhook']);
+        // Route::post('payment/webhook', [PlanPaymentController::class, 'handleWebhook']);
+        Route::post('payment/webhook', [PlanPaymentController::class, 'handleStripeWebhook']);
         Route::post('/stripe/webhook', [PlanPaymentController::class, 'webhookHandle']);
         Route::get('/payment/success', [PlanPaymentController::class, 'paymentSuccess'])->name('payment.success');
         Route::get('/payment/cancel', [PlanPaymentController::class, 'paymentCancel'])->name('payment.cancel');
