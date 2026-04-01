@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\PlanPayment;
 use App\Models\ProjectionCredit;
 use App\Models\User;
 use App\Models\UserMedicalHistory;
@@ -220,5 +221,29 @@ class UserProfileController extends Controller
                 'message' => 'Error: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    public function getProjectionLimitAndExoiredAt()
+    {
+        $user = auth()->user();
+        
+        $projectionCredit = ProjectionCredit::where('user_id', $user->id)->first();
+        
+        $latestPayment = PlanPayment::where('user_id', $user->id)
+                                    ->latest() 
+                                    ->first();
+        if (!$projectionCredit) {
+            return response()->json([
+                'success' => true,
+                'projection_limit' => 0,
+                'expired_at' => $latestPayment ? $latestPayment->end_date : null,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'projection_limit' => $projectionCredit->projection_limit,
+            'expired_at' => $latestPayment ? $latestPayment->end_date : null,
+        ]);
     }
 }
