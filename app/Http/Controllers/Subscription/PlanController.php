@@ -14,15 +14,10 @@ class PlanController extends Controller
     public function index(Request $request)
     {
         try {
-            $type = $request->query('type');       // individual / professional
-            $billing = strtolower($request->query('billing', 'monthly')); // monthly/half_annual/annual, default monthly
+            $type = $request->query('type'); 
+            $billing = strtolower($request->query('billing', 'monthly'));
 
-            // Validate billing param
-            if (!in_array($billing, ['monthly', 'half_annual', 'annual'])) {
-                $billing = 'monthly';
-            }
-
-            $query = Plan::query()->where('status', true);
+            $query = Plan::query(); 
 
             if ($type && in_array($type, ['individual', 'professional'])) {
                 $query->where('plan_type', $type);
@@ -42,18 +37,20 @@ class PlanController extends Controller
                     'status'         => $plan->status,
                     'price'          => $billing === 'annual' ? $plan->annual_price : $plan->price,
                     'projection_limit' => $plan->projection_limit,
+                    'status_label'     => $plan->status ? 'Active' : 'Inactive',
                 ];
             });
 
             return response()->json([
                 'success' => true,
+                'count'   => $data->count(),
                 'data'    => $data
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch plans: ' . $e->getMessage(),
+                'message' => 'Failed to fetch all plans: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -157,32 +154,23 @@ class PlanController extends Controller
     {
         try {
             $plan = Plan::findOrFail($id);
-
-            // Prevent toggling fixed plans
-            if (in_array($plan->id, [1,2,3,4,5,6,7,8])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'This plan is fixed and cannot be modified.'
-                ], 403);
-            }
-
-            // Toggle status
             $plan->status = !$plan->status;
             $plan->save();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Plan status updated successfully.',
+                'message' => 'Plan status updated successfully',
                 'data' => [
                     'id' => $plan->id,
-                    'status' => $plan->status
+                    'name' => $plan->name,
+                    'status' => $plan->status ? 'Active' : 'Inactive'
                 ]
             ], 200);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Plan not found.'
+                'message' => 'Plan not found'
             ], 404);
         } catch (\Exception $e) {
             return response()->json([
