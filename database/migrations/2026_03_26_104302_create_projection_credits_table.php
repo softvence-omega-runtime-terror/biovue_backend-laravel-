@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('projection_credits', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->integer('projection_limit')->default(2);
+            $table->integer('projection_limit')->default(1);
             $table->integer('member_limit')->nullable();
             $table->timestamps();
         });
