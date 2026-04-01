@@ -39,7 +39,7 @@ class ProjectionController extends Controller
             ]);
         }
 
-        $aiDomain = "https://ai.biovuedigitalwellness.com/api/v1/";
+        $aiDomain = "https://ai.biovuedigitalwellness.com";
 
         $formattedData = $projections->map(function($projection) use ($aiDomain) {
             $pData = $projection->projections_data;
@@ -226,7 +226,7 @@ class ProjectionController extends Controller
     {
         $projection = ProjectionData::where('user_id', auth()->id())->findOrFail($id);
         
-        $aiDomain = "https://ai.biovuedigitalwellness.com/api/v1/";
+        $aiDomain = "https://ai.biovuedigitalwellness.com";
         $pData = $projection->projections_data;
 
         return response()->json([
