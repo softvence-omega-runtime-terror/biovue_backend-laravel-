@@ -17,7 +17,7 @@ class RecommendationController extends Controller
 
             $response = Http::timeout(120)
                 ->withOptions(['verify' => false])
-                ->get("https://biovue-ai.onrender.com/api/v1/recommend/professionals/{$user_id}");
+                ->get("https://ai.biovuedigitalwellness.com/api/v1/recommend/professionals/{$user_id}");
 
             if (!$response->successful()) {
                 return response()->json([
@@ -53,7 +53,7 @@ public function trainerUsers($trainer_id)
 
         $response = Http::timeout(120)
             ->withoutVerifying() // SSL verify ignore
-            ->get("https://biovue-ai.onrender.com/api/v1/recommend/users/trainer/{$trainer_id}");
+            ->get("https://ai.biovuedigitalwellness.com/api/v1/recommend/users/trainer/{$trainer_id}");
 
         if ($response->failed()) {
             return response()->json([
@@ -87,7 +87,7 @@ public function trainerUsers($trainer_id)
 
             $response = Http::timeout(120)
                 ->withOptions(['verify' => false])
-                ->get("https://biovue-ai.onrender.com/api/v1/recommend/users/nutritionist/{$nutritionist_id}");
+                ->get("https://ai.biovuedigitalwellness.com/api/v1/recommend/users/nutritionist/{$nutritionist_id}");
 
             if (!$response->successful()) {
                 return response()->json([
@@ -120,7 +120,7 @@ public function supplierUsers($supplier_id)
         // Call external API
         $response = Http::timeout(120)
             ->withoutVerifying() // ignore SSL issues
-            ->get("https://biovue-ai.onrender.com/api/v1/recommend/users/supplier/{$supplier_id}");
+            ->get("https://ai.biovuedigitalwellness.com/api/v1/recommend/users/supplier/{$supplier_id}");
 
         // Check if API call failed
         if (!$response->successful()) {
