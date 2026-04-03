@@ -27,7 +27,7 @@ class InsightNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['mail', 'database'];
     }
 
     public function toDatabase($notifiable)
@@ -38,4 +38,24 @@ class InsightNotification extends Notification
             'type' => $this->type,
         ];
     }
+
+    public function toMail($notifiable)
+    {
+        return (new \Illuminate\Notifications\Messages\MailMessage)
+                    ->subject($this->title)
+                    ->view('emails.reminder', [
+                        'title' => $this->title,
+                        'bodyMessage' => $this->message,
+                    ]);
+    }
+
+    // public function toMail($notifiable)
+    // {
+    //     return (new MailMessage)
+    //         ->subject($this->title)
+    //         ->greeting('Hello!')
+    //         ->line($this->message)
+    //         ->action('Check My Plan', url('https://biovuedigitalwellness.com/pricing')) 
+    //         ->line('Thank you for being with BioVue!');
+    // }
 }

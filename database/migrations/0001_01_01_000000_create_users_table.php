@@ -19,10 +19,10 @@ return new class extends Migration
             $table->string('password');
             $table->string('otp',5)->nullable();
             $table->timestamp('otp_expire_at')->nullable();
-            $table->enum('status', ['active', 'inactive', 'turning_possibility','on_track'])->default('active');
+            $table->string('status')->default('active');
             $table->boolean('terms_accepted')->default(false);
             $table->foreignId('plan_id')->nullable();
-            $table->enum('user_type', ['individual', 'professional'])->default('individual');
+            $table->string('user_type')->default('individual');
             $table->enum('profession_type', [
                 'trainer_coach',
                 'nutritionist', 

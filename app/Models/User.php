@@ -10,12 +10,13 @@ use Spatie\Permission\Traits\HasRoles;
 use Laravel\Sanctum\HasApiTokens;
 use App\Models\AI\Insight;
 use App\Models\UserProfile;
+use Laravel\Cashier\Billable;
 
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable,HasRoles, HasApiTokens;
+    use HasFactory, Notifiable,HasRoles, HasApiTokens, Billable;
 
     /**
      * The attributes that are mass assignable.
@@ -65,8 +66,6 @@ class User extends Authenticatable
     public function canAccessDataOf($targetUserId)
     {
         if ($this->id == $targetUserId) return true;
-
-        if ($this->user_type === 'admin') return true;
 
         return \DB::table('connect_user_proffesions')
             ->where('profession_id', $this->id)
@@ -205,6 +204,8 @@ class User extends Authenticatable
         return $this->hasOne(ProjectionCredit::class, 'user_id');
     }
 
-
-
+    protected $casts = [
+        'user_type' => 'string',
+        'status' => 'string',
+    ];
 }
