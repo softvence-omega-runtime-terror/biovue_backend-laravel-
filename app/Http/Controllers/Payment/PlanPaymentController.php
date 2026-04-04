@@ -485,31 +485,74 @@ class PlanPaymentController extends Controller
 
     public function handleStripeWebhook(Request $request)
     {
+        \Log::info('Stripe Webhook Data:', $request->all());
         $payload = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
         $endpointSecret = config('services.stripe.webhook_secret');
 
         try {
             $event = Webhook::constructEvent($payload, $sigHeader, $endpointSecret);
+            //$event = json_decode($payload);
 
-            if (!in_array($event->type, ['checkout.session.completed', 'payment_intent.succeeded'])) {
+            if (!in_array($event->type, ['checkout.session.completed', 'payment_intent.succeeded', 'invoice.payment_succeeded', 'invoice.payment_failed'])) {
                 return response('Event ignored', 200);
             }
 
             $session = $event->data->object;
             $paymentId = $session->metadata->payment_id ?? null;
 
+            if (!$paymentId && isset($session->subscription)) {
+                $lastPayment = PlanPayment::where('stripe_subscription_id', $session->subscription)
+                    ->latest()
+                    ->first();
+                $paymentId = $lastPayment ? $lastPayment->id : null;
+            }
+
             if (!$paymentId) {
-                return response('Missing payment ID in metadata', 400);
+                return response('Missing payment ID', 400);
             }
 
             DB::beginTransaction();
 
-            $payment = PlanPayment::where('id', $paymentId)->lockForUpdate()->first();
+            $payment = PlanPayment::with('user', 'plan')->where('id', $paymentId)->lockForUpdate()->first();
 
             if (!$payment) {
                 DB::rollBack();
                 return response('Payment record not found', 404);
+            }
+
+            if ($event->type === 'invoice.payment_failed') {
+                $payment->update(['status' => 'failed']);
+                
+                if ($payment->user) {
+                    try {
+                        $payment->user->notify(new \App\Notifications\InsightNotification(
+                            'Payment Failed', 
+                            'We could not process your recurring payment. Please update your card.', 
+                            'payment_failed'
+                        ));
+                    } catch (\Exception $e) {
+                        \Log::error('Failed Notification: ' . $e->getMessage());
+                    }
+                }
+                DB::commit();
+                return response('Payment Failure Handled', 200);
+            }
+
+            if ($event->type === 'invoice.payment_succeeded' && $payment->status === 'paid') {
+                $newEndDate = ($payment->billing === 'annual') ? Carbon::now()->addYear() : Carbon::now()->addMonth();
+                
+                $payment->update([
+                    'end_date' => $newEndDate,
+                    'updated_at' => Carbon::now(),
+                ]);
+
+                $projectionCredit = ProjectionCredit::firstOrNew(['user_id' => $payment->user_id]);
+                $projectionCredit->projection_limit = $payment->plan->projection_limit ?? 0; 
+                $projectionCredit->save();
+
+                DB::commit();
+                return response('Subscription Renewed Successfully', 200);
             }
 
             if ($payment->status === 'paid') {
@@ -518,17 +561,17 @@ class PlanPaymentController extends Controller
             }
 
             $payment->update([
-                'status'            => 'paid',
-                'stripe_session_id' => $session->id,
-                'start_date'        => Carbon::now(),
-                'end_date'          => ($payment->billing === 'annual') ? Carbon::now()->addYear() : Carbon::now()->addMonth(),
+                'status'                => 'paid',
+                'stripe_session_id'     => $session->id ?? $payment->stripe_session_id,
+                'stripe_subscription_id' => $session->subscription ?? null, 
+                'start_date'            => Carbon::now(),
+                'end_date'              => ($payment->billing === 'annual') ? Carbon::now()->addYear() : Carbon::now()->addMonth(),
             ]);
 
             if ($payment->user) {
                 $payment->user->update(['plan_id' => $payment->plan_id]);
 
                 $projectionCredit = ProjectionCredit::firstOrNew(['user_id' => $payment->user_id]);
-                
                 $projectionCredit->member_limit = ($projectionCredit->member_limit ?? 0) + ($payment->plan->member_limit ?? 0);
                 $projectionCredit->projection_limit = ($projectionCredit->projection_limit ?? 0) + ($payment->plan->projection_limit ?? 0);
                 $projectionCredit->updated_at = Carbon::now();
@@ -545,14 +588,10 @@ class PlanPaymentController extends Controller
             return response('Webhook Handled Successfully', 200);
 
         } catch (\Stripe\Exception\SignatureVerificationException $e) {
-
             return response('Invalid Signature', 400);
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Stripe Webhook Error: ' . $e->getMessage(), [
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ]);
+            if (DB::transactionLevel() > 0) DB::rollBack();
+            Log::error('Stripe Webhook Error: ' . $e->getMessage());
             return response('Webhook Error', 500);
         }
     }
