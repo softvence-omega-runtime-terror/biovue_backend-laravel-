@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\User;
 
 class AIObservemetricsController extends Controller
 {
@@ -65,20 +66,20 @@ class AIObservemetricsController extends Controller
     }
 
 
+    
 
 
-
-
-    public function index()
+public function index($id)
 {
     try {
-        $user = auth()->user();
+
+        $user = User::find($id);
 
         if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized'
-            ], 401);
+                'message' => 'User not found'
+            ], 404);
         }
 
         // Latest records
@@ -91,20 +92,16 @@ class AIObservemetricsController extends Controller
         // Calculations
         // =========================
 
-        // Weight
         $weight = $activity->weight ?? null;
 
-        // Nutrition %
         $nutritionQuality = null;
         if ($nutrition) {
             $total = $nutrition->protein_servings + $nutrition->vegetable_servings;
             $nutritionQuality = round(($total / 10) * 100);
         }
 
-        // Steps
         $steps = $activity->daily_steps ?? 0;
 
-        // Sleep format
         $sleepFormatted = null;
         if ($activity && $activity->sleep_hours) {
             $hours = floor($activity->sleep_hours);
@@ -112,7 +109,6 @@ class AIObservemetricsController extends Controller
             $sleepFormatted = $hours . 'h ' . $minutes . 'm';
         }
 
-        // Stress label
         $stressLabel = null;
         if ($stress && $stress->stress_level) {
             if ($stress->stress_level >= 4) {
@@ -124,7 +120,6 @@ class AIObservemetricsController extends Controller
             }
         }
 
-        // Hydration
         $hydrationOz = null;
         if ($hydration) {
             $hydrationOz = $hydration->water_glasses * 8;
@@ -138,7 +133,7 @@ class AIObservemetricsController extends Controller
                 'steps' => $steps,
                 'sleep' => $sleepFormatted,
                 'stress' => $stressLabel,
-                'hydration' => $hydrationOz ? $hydrationOz . ' oz' : null,
+                'hydrration' => $hydrationOz ? $hydrationOz . ' oz' : null,
             ]
         ], 200);
 
@@ -149,5 +144,5 @@ class AIObservemetricsController extends Controller
             'error' => $e->getMessage()
         ], 500);
     }
-}
+    }
 }

@@ -23,11 +23,12 @@ class UserNutritionCalculateController extends Controller
         try {
             $userId = $request->user_id;
             $foods = $request->foods;
+            $log_date = $request->log_date ?? now()->toDateString();
 
             // Call AI Nutrition API
             $response = Http::withoutVerifying()
                 ->timeout(120)
-                ->post('https://biovue-ai.onrender.com/api/v1/habits/nutritions/calculate', [
+                ->post('https://ai.biovuedigitalwellness.com/api/v1/habits/nutritions/calculate', [
                     'foods' => $foods
                 ]);
 
@@ -68,11 +69,13 @@ class UserNutritionCalculateController extends Controller
                 'carbs_unit' => $carbsUnit,
                 'fat_value' => $fatValue,
                 'fat_unit' => $fatUnit,
-                'total' => $total
+                'total' => $total,
+                'log_date' => $log_date,
             ]);
 
             // Return AI-style response
             return response()->json([
+                'log_date' => $log_date,
                 'nutrition' => [
                     'calories' => [
                         'value' => $caloriesValue,
@@ -126,6 +129,7 @@ class UserNutritionCalculateController extends Controller
 
         // Return AI-style response
         return response()->json([
+            'log_date' => $nutrition->log_date,
             'nutrition' => [
                 'calories' => [
                     'value' => $nutrition->calories_value,

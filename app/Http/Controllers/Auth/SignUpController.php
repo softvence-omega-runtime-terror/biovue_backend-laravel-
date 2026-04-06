@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Notifications\AdminNotification;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -81,6 +82,11 @@ class SignUpController extends Controller
 
         // Send OTP email
         SendOtpEmail::dispatch($user->id, 'verify', $otp);
+
+        $admin = User::find(1);
+
+        $admin->notify(new AdminNotification('New User Registration', "$user->name is onboarded",'registration_message'));
+
 
         return response()->json([
             'success' => true,

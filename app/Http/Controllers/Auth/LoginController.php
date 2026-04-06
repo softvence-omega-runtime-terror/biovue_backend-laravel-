@@ -46,9 +46,12 @@ class LoginController extends Controller
             ], 403);
         }
 
+        $profileStatus = $user->profile()->exists() ? 'Your profile is complete.' : 'Your profile is incomplete. Please complete your profile to access all features.';
         // ✅ Generate token
         $token = $user->createToken('auth_token_' . $user->id)->plainTextToken;
-
+        // ✅ Get plan duration in integer days
+        $planDuration = $this->getPlanDuration($user);
+        $projectionCredits = $user->projectionCredits ? $user->projectionCredits->projection_limit : 0;
         // ✅ Return success response
         return response()->json([
             'success' => true,
@@ -60,12 +63,15 @@ class LoginController extends Controller
                     'role' => $user->getRoleNames()->first() ?? null,
                     'plan_id' => $user->plan_id,
                     'plan_name' => $user->plan->name?? null,
-                    'plan_duration' => $user->plan->duration?? null,
+                    'plan_duration' => $planDuration, // integer days
                      'user_type' => $user->user_type ?? null,          // <-- added
                     'profession_type' => $user->profession_type ?? null, // <-- added
-                   
-                    
-                    
+                    'projection_credits' => $projectionCredits,
+                    'is_profile_completed' => $profileStatus,
+                        
+                   // ✅ Add timestamps
+                        'created_at' => $user->created_at->toDateTimeString(),
+                        'updated_at' => $user->updated_at->toDateTimeString(),
                 ],
                
                 'token' => $token,
@@ -93,6 +99,49 @@ class LoginController extends Controller
 
 
 
+
+
+
+/**
+ * Protected helper to calculate remaining plan duration (in days)
+ */
+protected function getPlanDuration($user)
+{
+    $plan = $user->plan;
+    if (!$plan) return null;
+
+    $latestPayment = $user->planPayments()
+        ->where('plan_id', $plan->id)
+        ->where('status', 'paid')
+        ->latest()
+        ->first();
+
+    if (!$latestPayment) return null;
+
+    $startDate = $latestPayment->created_at;
+
+    // ✅ Use billing from DB (NOT plan table)
+    $billing = $latestPayment->billing;
+
+    $durationDays = 0;
+
+    if ($billing === 'annual') {
+        $durationDays = 365;
+    } elseif ($billing === 'monthly') {
+        $durationDays = 30;
+    } else {
+        $durationDays = (int)($plan->duration ?? 0);
+    }
+
+    $endDate = $startDate->copy()->addDays($durationDays);
+    $remainingDays = now()->diffInDays($endDate, false);
+
+    return $remainingDays > 0 ? (int)$remainingDays : 0;
+}
+
+
+
+//resend otp
  public function resendOtp(Request $request)
 {
     try {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\SleepLog;
 
 use App\Http\Controllers\Controller;
 use App\Models\SleepLog;
+use App\Notifications\ReminderNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -11,22 +12,27 @@ use Illuminate\Support\Facades\DB;
 
 class SleepController extends Controller
 {
-    public function store(Request $request) 
-    { 
-        $validated = $request->validate([ 
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
             'log_date' => 'required|date',
-            'weight' => 'nullable|integer', 
-            'daily_steps' => 'nullable|integer', 
-            'sleep_hours' => 'nullable|numeric', 
-            'water_glasses' => 'nullable|integer', 
-        ]); 
+            'weight' => 'nullable|integer',
+            'daily_steps' => 'nullable|integer',
+            'sleep_hours' => 'nullable|numeric',
+            'water_glasses' => 'nullable|integer',
+        ]);
 
-        $activity = SleepLog::create($validated); 
+        $activity = SleepLog::create($validated);
+
+        $user = Auth::user();
+
+        $user->notify(new ReminderNotification('New Sleep Logs', 'Sleep Logs Added on '.$request->log_date .' ','reminder_message'));
+
         return response()->json($activity, 201);
 
-    } 
-    
+    }
+
     public function index()
     {
         return SleepLog::where('user_id', Auth::id())->get();
@@ -36,19 +42,23 @@ class SleepController extends Controller
     {
         return SleepLog::where('user_id', Auth::id())
             ->where('id', $id)
-            ->firstOrFail(); 
+            ->firstOrFail();
     }
 
 
 
     public function getSleepReport(Request $request, $userId = null)
-
     {
         $id = $userId ?: auth()->id();
-        
-        $days = (int) $request->query('days', 7); 
-        $startDate = Carbon::now()->subDays($days - 1)->startOfDay();
+
+        $days = (int) $request->query('days', 7);
+
+        if (!in_array($days, [7, 15, 30, 90])) {
+            $days = 7;
+        }
+
         $endDate = Carbon::now()->endOfDay();
+        $startDate = Carbon::now()->subDays($days - 1)->startOfDay();
 
         $sleepLogs = DB::table('sleep_logs')
             ->where('user_id', $id)
@@ -56,22 +66,40 @@ class SleepController extends Controller
             ->orderBy('log_date', 'asc')
             ->get();
 
+        $sleepTarget = DB::table('target_goals')
+            ->where('user_id', $id)
+            ->value('sleep_target') ?? 0;
+
+        $notes = DB::table('profession_notes')
+            ->join('users as professionals', 'profession_notes.profession_id', '=', 'professionals.id')
+            ->where('profession_notes.user_id', $id)
+            ->select('profession_notes.id', 'profession_notes.note', 'profession_notes.created_at', 'professionals.name as provider_name')
+            ->latest()
+            ->take(5)
+            ->get();
+
         $chartData = [];
-        
+        $totalSleepHours = 0;
+        $loggedDaysCount = 0;
+
         for ($i = 0; $i < $days; $i++) {
             $currentDate = Carbon::now()->subDays(($days - 1) - $i)->toDateString();
-            
             $log = $sleepLogs->where('log_date', $currentDate)->first();
 
+            $hours = $log ? (float) $log->sleep_hours : 0;
+            $totalSleepHours += $hours;
+
             $chartData[] = [
-                'date' => Carbon::parse($currentDate)->format('d M'), 
-                'sleep_hours' => $log ? (float) $log->sleep_hours : 0,
-                'label' => Carbon::parse($currentDate)->format('D'),
+                'date' => Carbon::parse($currentDate)->format('d M'),
+                'sleep_hours' => $hours,
+                'target_hours' => (float) $sleepTarget,
+                'label' => $days > 15 ? Carbon::parse($currentDate)->format('d M') : Carbon::parse($currentDate)->format('D'),
             ];
+
+            if ($hours > 0) $loggedDaysCount++;
         }
 
-        $avgSleep = $sleepLogs->avg('sleep_hours') ?? 0;
-        $loggedDaysCount = $sleepLogs->where('sleep_hours', '>', 0)->count();
+        $avgSleep = ($days > 0) ? ($totalSleepHours / $days) : 0;
         $consistency = ($days > 0) ? round(($loggedDaysCount / $days) * 100) : 0;
 
         return response()->json([
@@ -79,22 +107,24 @@ class SleepController extends Controller
             'period' => "Past $days Days",
             'statistics' => [
                 'average_sleep' => number_format($avgSleep, 1) . " Hrs",
+                'sleep_target' => number_format($sleepTarget, 1) . " Hrs",
                 'consistency' => $consistency . "%",
                 'total_logged' => "$loggedDaysCount / $days Days",
             ],
-            'chart_data' => $chartData
+            'chart_data' => $chartData,
+            'profession_notes' => $notes
         ]);
     }
 
-private function getStartDate($type) {
-    return match($type) {
-        'weekly' => Carbon::now()->subDays(6),
-        'monthly' => Carbon::now()->subDays(30), 
-        '3_months' => Carbon::now()->subMonths(3),
-        '6_months' => Carbon::now()->subMonths(6),
-        default => Carbon::now()->subDays(6),
-    };
-}
+    private function getStartDate($type) {
+        return match($type) {
+            'weekly' => Carbon::now()->subDays(6),
+            'monthly' => Carbon::now()->subDays(30),
+            '3_months' => Carbon::now()->subMonths(3),
+            '6_months' => Carbon::now()->subMonths(6),
+            default => Carbon::now()->subDays(6),
+        };
+    }
 
     private function generateSleepChartData($type, $startDate, $endDate, $logs, $userId) {
         $data = [];

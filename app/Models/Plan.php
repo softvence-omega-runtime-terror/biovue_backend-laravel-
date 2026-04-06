@@ -20,6 +20,9 @@ class Plan extends Model
         'member_limit',
         'features',
         'status',
+        'projection_limit',
+        'stripe_price_id',
+        'stripe_price_id_annual',
     ];
 
     protected $casts = [

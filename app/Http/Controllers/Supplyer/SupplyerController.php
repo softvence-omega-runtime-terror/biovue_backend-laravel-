@@ -54,7 +54,8 @@ class SupplyerController extends Controller
     public function userIndex()
     {
         try {
-            $users = User::orderBy('created_at', 'desc')
+            $users = User::where('user_type', 'individual')
+                        ->orderBy('created_at', 'desc')
                         ->get()
                         ->map(function ($user) {
                             return [
@@ -62,9 +63,21 @@ class SupplyerController extends Controller
                                 'name' => $user->name,
                                 'email' => $user->email,
                                 'user_type' => ucfirst($user->user_type),
-                                'profession_type' => $user->profession_type ? ucfirst(str_replace('_', ' ', $user->profession_type)) : null,
                                 'profile_image' => $user->image ? asset('storage/' . $user->image) : null,
                                 'joined_at' => $user->created_at->format('Y-m-d'),
+                                'target_goals' => $user->targetGoals()->where('is_active', true)->get()->map(function ($goal) {
+                                    return [
+                                        'id' => $goal->id,
+                                        'target_weight' => $goal->target_weight,
+                                        'weekly_workout_goal' => $goal->weekly_workout_goal,
+                                        'daily_step_goal' => $goal->daily_step_goal,
+                                        'sleep_target' => $goal->sleep_target,
+                                        'water_target' => $goal->water_target,
+                                        'supplement_recommendation' => $goal->supplement_recommendation,
+                                        'start_date' => $goal->start_date ? $goal->start_date->format('Y-m-d') : null,
+                                        'end_date' => $goal->end_date ? $goal->end_date->format('Y-m-d') : null,
+                                    ];
+                                }),
                             ];
                         });
 
@@ -74,7 +87,10 @@ class SupplyerController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false, 
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\StressLog;
 
 use App\Http\Controllers\Controller;
 use App\Models\StressLog;
+use App\Notifications\ReminderNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -29,7 +30,7 @@ class StressController extends Controller
     {
         $validated = $request->validate([
             'log_date'     => 'required|date',
-            'stress_level' => 'nullable|integer|min:1|max:5',
+            'stress_level' => 'nullable|integer|min:1|max:10',
             'mood'         => 'nullable|in:motivated,normal,low,happy,sad,neutral,angry,anxious',
             'description'  => 'nullable|string',
         ]);
@@ -46,7 +47,11 @@ class StressController extends Controller
         );
 
         $status = $log->wasRecentlyCreated ? 201 : 200;
-        
+
+        $user = Auth::user();
+
+        $user->notify(new ReminderNotification('New Stress Logs', 'Stress Logs Added on '.$request->log_date .' ','reminder_message'));
+
         return response()->json([
             'success' => true,
             'message' => $log->wasRecentlyCreated ? 'Stress log created' : 'Stress log updated',
@@ -69,7 +74,7 @@ class StressController extends Controller
             'data' => $log
         ]);
     }
-    
+
     public function destroy($id)
     {
         $log = StressLog::where('user_id', Auth::id())->find($id);

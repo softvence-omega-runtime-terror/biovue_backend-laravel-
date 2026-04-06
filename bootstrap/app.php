@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Http\Middleware\CheckDataAccess;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,7 +14,23 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->statefulApi(); 
+        $middleware->trustProxies(at: '*');
+
+        $middleware->validateCsrfTokens(except: [
+            'api/v1/*', 
+        ]);
+        $middleware->alias([
+            'data.access' => CheckDataAccess::class,
+        ]);
+         $middleware->validateCsrfTokens(except: [
+            '/stripe/webhook', 
+        ]);
+
+        $middleware->validateCsrfTokens(except: [
+            'api/v1/payment/webhook',
+        ]);
+
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
