@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\Schedule;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -603,11 +604,17 @@ class UserController extends Controller
     {
         try {
             $coachId = auth()->id();
+            
+            $todaysCheckinsCount = Schedule::where('trainer_id', $coachId)
+                ->whereDate('schedule_date', now()->today())
+                ->count();
+
             $totalSignups = User::where('user_type', 'individual')->orWhere('user_type', 'professional')->count();
+            
             $clientsQuery = User::where('user_type', 'individual')
                 ->whereHas('targetGoals', function($q) use ($coachId) {
                     $q->where('id', $coachId);
-                }) ;
+                });
 
             $activeCount = $totalSignups;
             
@@ -640,7 +647,8 @@ class UserController extends Controller
                     'active_clients'    => ['value' => $activeCount, 'label' => 'Currently coached'],
                     'needing_attention' => ['value' => $attentionCount, 'label' => 'Off-track or low activity'],
                     'pending_messages'  => ['value' => 3, 'label' => 'Unread client messages'], 
-                    'todays_checkins'   => ['value' => 7, 'label' => 'Scheduled Today'] 
+                    
+                    'todays_checkins'   => ['value' => $todaysCheckinsCount, 'label' => 'Scheduled Today'] 
                 ],
                 'client_table' => $clientsTable,
                 'today_actions' => [
@@ -695,38 +703,36 @@ class UserController extends Controller
     }
 
     public function getMyConnections()
-{
-    try {
-        $user = auth()->user(); 
+    {
+        try {
+            $user = auth()->user(); 
 
-        // আইডি ২ এর জন্য এই কন্ডিশনটি সত্য হবে কারণ তার টাইপ 'professional'
-        if ($user->user_type === 'professional' || $user->user_type === 'trainer' || $user->user_type === 'coach') {
-            
-            // প্রফেশনাল (২) তার ক্লায়েন্টদের (৩) খুঁজছেন
-            $connections = $user->belongsToMany(\App\Models\User::class, 'connect_user_proffesions', 'profession_id', 'user_id')
-                                ->get(['users.id', 'users.name', 'users.email']); 
-            $message = "Your connected clients";
-        } 
-        else {
-            // ক্লায়েন্ট (৩) তার প্রফেশনালকে (২) খুঁজছেন
-            $connections = $user->belongsToMany(\App\Models\User::class, 'connect_user_proffesions', 'user_id', 'profession_id')
-                                ->get(['users.id', 'users.name', 'users.email']); 
-            $message = "Professionals you are following";
+            if ($user->user_type === 'professional' || $user->user_type === 'trainer' || $user->user_type === 'coach') {
+                
+                $connections = $user->belongsToMany(User::class, 'connect_user_proffesions', 'profession_id', 'user_id')
+                                    ->get(['users.id', 'users.name', 'users.email']); 
+                $message = "Your connected clients";
+            } 
+            else {
+                $connections = $user->belongsToMany(User::class, 'connect_user_proffesions', 'user_id', 'profession_id')
+                                    ->get(['users.id', 'users.name', 'users.email']); 
+                $message = "Professionals you are following";
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'current_user' => [
+                    'id' => $user->id,
+                    'type' => $user->user_type
+                ],
+                'count' => $connections->count(),
+                'data' => $connections
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'current_user' => [
-                'id' => $user->id,
-                'type' => $user->user_type
-            ],
-            'count' => $connections->count(),
-            'data' => $connections
-        ]);
-
-    } catch (\Exception $e) {
-        return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
     }
 }
-}
+
