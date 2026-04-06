@@ -14,7 +14,7 @@ class PlanPayment extends Model
     protected $fillable = [
     'user_id', 'plan_id', 'transaction_id', 'amount', 
     'currency', 'status', 'stripe_session_id', 'billing', 
-    'start_date', 'end_date', 'stripe_session_id'
+    'start_date', 'end_date', 'stripe_session_id', 'stripe_subscription_id'
     ];
 
     protected $casts = [

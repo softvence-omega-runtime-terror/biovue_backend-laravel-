@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Subscription;
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use Illuminate\Http\Request;
+use Stripe\StripeClient;
+
 
 class PlanController extends Controller
 {
@@ -58,48 +60,85 @@ class PlanController extends Controller
     public function storeOrUpdatePlan(Request $request)
     {
         $request->validate([
-            'id' => 'nullable|integer|exists:plans,id', // optional for update
-            'name' => 'required|string|max:255',
-            'plan_type' => 'required|in:individual,professional',
-            'billing_cycle' => 'required|in:days,monthly,half_annual,annual,custom',
-            'price' => 'required|numeric|min:0',
-            'duration' => 'nullable|integer',
-            'member_limit' => 'nullable|integer',
-            'features' => 'nullable|array',
-            'status' => 'boolean',
+            'id'               => 'nullable|integer|exists:plans,id',
+            'name'             => 'required|string|max:255',
+            'plan_type'        => 'required|in:individual,professional',
+            'billing_cycle'    => 'required|in:days,monthly,half_annual,annual,custom',
+            'price'            => 'required|numeric|min:0',
+            'duration'         => 'nullable|integer',
+            'member_limit'     => 'nullable|integer',
+            'features'         => 'nullable|array',
+            'status'           => 'boolean',
             'projection_limit' => 'nullable|integer'
         ]);
 
         try {
-            // Use updateOrCreate
+            $stripe = new StripeClient(config('services.stripe.secret'));
+            $planId = $request->id;
+            $existingPlan = $planId ? Plan::find($planId) : null;
+
+            $stripePriceId = $existingPlan ? $existingPlan->stripe_price_id : null;
+
+            if (!$existingPlan || (float)$existingPlan->price != (float)$request->price) {
+                
+                if ($existingPlan && $existingPlan->stripe_product_id) {
+                    $stripeProduct = $stripe->products->update($existingPlan->stripe_product_id, [
+                        'name' => $request->name
+                    ]);
+                    $stripeProductId = $stripeProduct->id;
+                } else {
+                    $stripeProduct = $stripe->products->create([
+                        'name' => $request->name,
+                    ]);
+                    $stripeProductId = $stripeProduct->id;
+                }
+
+                if ((float)$request->price > 0) {
+                    $interval = $request->billing_cycle === 'annual' ? 'year' : 'month';
+                    
+                    $stripePrice = $stripe->prices->create([
+                        'unit_amount' => (int)($request->price * 100),
+                        'currency'    => 'usd',
+                        'recurring'   => ['interval' => $interval],
+                        'product'     => $stripeProductId,
+                    ]);
+                    $stripePriceId = $stripePrice->id;
+                }
+            } else {
+                $stripeProductId = $existingPlan->stripe_product_id;
+            }
+
             $plan = Plan::updateOrCreate(
-                ['id' => $request->id], // if id exists → update, otherwise create
+                ['id' => $planId],
                 [
-                    'name' => $request->name,
-                    'plan_type' => $request->plan_type,
-                    'user_id' => $request->user()->id,
-                    'billing_cycle' => $request->billing_cycle,
-                    'price' => $request->price,
-                    'duration' => $request->duration,
-                    'member_limit' => $request->plan_type === 'professional' ? $request->member_limit : null,
-                    'features' => $request->features,
-                    'status' => $request->status ?? true,
-                    'projection_limit' => $request->projection_limit ?? null,
+                    'name'               => $request->name,
+                    'plan_type'          => $request->plan_type,
+                    'user_id'            => $request->user()->id,
+                    'billing_cycle'      => $request->billing_cycle,
+                    'price'              => $request->price,
+                    'duration'           => $request->duration,
+                    'member_limit'       => $request->plan_type === 'professional' ? $request->member_limit : null,
+                    'features'           => $request->features,
+                    'status'             => $request->status ?? true,
+                    'projection_limit'   => $request->projection_limit ?? null,
+                    'stripe_product_id'  => $stripeProductId ?? null,
+                    'stripe_price_id'    => $stripePriceId ?? null, // এই আইডিটিই পেমেন্টের সময় লাগবে
                 ]
             );
 
-            $message = $request->filled('id') ? 'Plan updated successfully.' : 'Plan created successfully.';
+            $message = $request->filled('id') ? 'Plan updated successfully in DB & Stripe.' : 'Plan created successfully in DB & Stripe.';
 
             return response()->json([
                 'success' => true,
                 'message' => $message,
-                'data' => $plan
+                'data'    => $plan
             ], $request->filled('id') ? 200 : 201);
 
         } catch (\Exception $e) {
+            \Log::error('Plan Sync Error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Something went wrong. Error: ' . $e->getMessage()
+                'message' => 'Error: ' . $e->getMessage()
             ], 500);
         }
     }
