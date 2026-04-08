@@ -301,6 +301,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/trainer-notes/{userId}', [TrainerController::class, 'indexTrainerNotes']);
         Route::post('/trainer-notes', [TrainerController::class, 'storeTrainerNote']);
         Route::delete('/trainer-notes/{id}', [TrainerController::class, 'destroyTrainerNote']);
+        Route::post('/invitations/send', [TrainerController::class, 'sendInvitation']);
+        Route::get('/invitation/accept/{token}', [TrainerController::class, 'acceptInvitation']);
 
         Route::post('/plans/store-or-update', [PlanController::class, 'storeOrUpdatePlan']);
 

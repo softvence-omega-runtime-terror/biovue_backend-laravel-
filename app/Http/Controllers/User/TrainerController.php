@@ -6,6 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\Invitation;
+use App\Mail\InvitationMail;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
 
 class TrainerController extends Controller
 {
@@ -217,5 +221,51 @@ class TrainerController extends Controller
         DB::table('profession_notes')->where('id', $id)->delete();
 
         return response()->json(['success' => true, 'message' => 'Note deleted successfully']);
+    }
+
+    public function sendInvitation(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $trainer = auth()->user();
+        $token = \Illuminate\Support\Str::random(40);
+
+        $invitation = Invitation::create([
+            'trainer_id' => $trainer->id, 
+            'email'      => $request->email,
+            'token'      => $token,
+            'status'     => 'pending'
+        ]);
+
+        \Illuminate\Support\Facades\Mail::to($request->email)
+            ->send(new \App\Mail\InvitationMail($trainer, $token));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Invitation sent successfully!'
+        ]);
+    }
+        public function acceptInvitation($token)
+    {
+        $invitation = Invitation::where('token', $token)
+            ->where('status', 'pending')
+            ->firstOrFail();
+        
+        \Illuminate\Support\Facades\DB::table('connect_user_proffesions')->updateOrInsert([
+            'profession_id' => $invitation->trainer_id,
+            'user_id'       => auth()->id(),
+        ], [
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+
+        $invitation->update(['status' => 'accepted']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'You are now connected with your trainer!'
+        ]);
     }
 }
