@@ -27,12 +27,11 @@ class InvitationMail extends Mailable
      */
     public function build()
     {
-        $acceptUrl = url('/api/v1/invitation/accept/' . $this->token);
-
-        return $this->subject('Invitation to join BioVue')
-                    ->markdown('emails.invitation', [
-                        'trainerName' => $this->trainer->name,
-                        'url' => $acceptUrl
-                    ]);
+        return $this->subject('Invitation from ' . $this->trainer->name)
+            ->view('emails.invitation') 
+            ->with([
+                'trainerName' => $this->trainer->name,
+                'url' => url('/api/v1/invitation/accept/' . $this->token), 
+            ]);
     }
 }
