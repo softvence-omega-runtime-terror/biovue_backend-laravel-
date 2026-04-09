@@ -83,8 +83,14 @@
                 If you’re curious about the new options, you’re welcome to explore them anytime in your account.
             </p>
 
-            <div class="button-wrapper">
-                <a href="{{ $url }}" class="btn">Check My Plan</a>
+            <div class="button-row" style="text-align: center; margin: 30px 0;">
+                <a href="{{ $url }}" class="btn btn-primary" style="display: inline-block; background-color: #000000; color: #ffffff !important; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; margin: 5px;">
+                    Check My Plan
+                </a>
+
+                <a href="https://biovuedigitalwellness.com/pricing" class="btn btn-outline" style="display: inline-block; background-color: #ffffff; color: #000000 !important; border: 2px solid #000000; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; margin: 5px;">
+                    Check New Plan
+                </a>
             </div>
 
             <div class="footer-section">
