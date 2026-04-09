@@ -68,7 +68,8 @@
         </div>
 
         <div class="email-card">
-            <div class="greeting">Hello!</div>
+            <h3> <strong>Your Plan Options Have Been Updated</strong> </h3>
+            <div class="greeting">Hello, {{ $userName }}!</div>
 
             <p class="content-text">
                 We’ve recently updated our plan options to bring you even more value and flexibility.
@@ -83,7 +84,7 @@
             </p>
 
             <div class="button-wrapper">
-                <a href="https://biovuedigitalwellness.com/pricing" class="btn">Check My Plan</a>
+                <a href="{{ $url }}" class="btn">Check My Plan</a>
             </div>
 
             <div class="footer-section">
