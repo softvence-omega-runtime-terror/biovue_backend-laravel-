@@ -28,6 +28,8 @@ class SignUpController extends Controller
                 'confirmed',
                 Password::min(8)->letters()->mixedCase()->numbers()->symbols()
             ],
+            'zipcode' => 'nullable|string|max:20',
+            'prof_service_type' => 'nullable|string|in:local, remote, both',
             'role' => 'required|string',
             'terms_accepted' => 'required|accepted',
             'user_type' => 'required|string|in:individual,professional',
