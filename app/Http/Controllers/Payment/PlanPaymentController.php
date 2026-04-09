@@ -544,4 +544,52 @@ class PlanPaymentController extends Controller
             return response('Internal Error', 500);
         }
     }
+
+    public function cancelSubscription(Request $request)
+    {
+        $user = auth()->user();
+
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized. Please login again.'], 401);
+        }
+
+        if ($user->user_type === 'professional') {
+            $sixMonthsAgo = now()->subMonths(6);
+
+            if ($user->created_at->gt($sixMonthsAgo)) {
+                $canCancelAt = $user->created_at->addMonths(6)->format('d M, Y');
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => "As a professional user, you cannot cancel your subscription within the first 6 months. You will be eligible to cancel after {$canCancelAt}."
+                ], 403);
+            }
+        }
+
+        $payment = PlanPayment::where('user_id', $user->id)
+                    ->where('status', 'paid')
+                    ->whereNotNull('stripe_subscription_id')
+                    ->latest()
+                    ->first();
+
+        if (!$payment) {
+            return response()->json(['success' => false, 'message' => 'No active subscription found'], 404);
+        }
+
+        try {
+            $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
+
+            $stripe->subscriptions->update($payment->stripe_subscription_id, [
+                'cancel_at_period_end' => true
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Your subscription will be cancelled at the end of the current billing period.'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
 }
