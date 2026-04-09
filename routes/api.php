@@ -89,7 +89,7 @@ Route::prefix('v1')->group(function () {
     Route::post('payment/webhook', [PlanPaymentController::class, 'handleStripeWebhook']);
     Route::post('/stripe/webhook', [PlanPaymentController::class, 'webhookHandle']);
     Route::get('/payment/success', [PlanPaymentController::class, 'paymentSuccess'])->name('payment.success');
-    Route::get('/payment/cancel', [PlanPaymentController::class, 'paymentCancel'])->name('payment.cancel');
+    Route::post('/payment/cancel', [PlanPaymentController::class, 'cancelSubscription']);
     Route::get('ads', [AdsController::class, 'index']);
     
     Route::apiResource('partners', PartnerController::class)->except(['store', 'update', 'destroy', 'show']);

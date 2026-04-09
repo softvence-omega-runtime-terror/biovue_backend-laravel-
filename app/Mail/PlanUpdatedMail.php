@@ -21,7 +21,7 @@ class PlanUpdatedMail extends Mailable
 
     public function build()
     {
-        $url = "https://biovuedigitalwellness.com/my-plan/" . $this->planId;
+        $url = "https://biovuedigitalwellness.com/user-dashboard/my-current-plan";
 
         return $this->subject('Your Plan Options Have Been Updated')
                     ->view('emails.plan_updated')
