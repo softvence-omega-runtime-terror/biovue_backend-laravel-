@@ -1050,7 +1050,8 @@ private function formatFoods($foods)
     public function getMyConnections(Request $request)
     {
         try {
-            $targetUserId = $this->getUserId($request);
+            $targetUserId = auth()->id(); 
+            
             $targetUser = User::find($targetUserId);
 
             if (!$targetUser) {
@@ -1058,7 +1059,6 @@ private function formatFoods($foods)
             }
 
             if (in_array($targetUser->user_type, ['professional', 'trainer', 'coach'])) {
-                
                 $connections = $targetUser->belongsToMany(User::class, 'connect_user_proffesions', 'profession_id', 'user_id')
                                         ->get(['users.id', 'users.name', 'users.email']); 
                 $message = "Connected clients for " . $targetUser->name;

@@ -6,6 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use Illuminate\Http\Request;
 use Stripe\StripeClient;
+use App\Models\User;
+use App\Mail\PlanUpdatedMail;
+use Illuminate\Support\Facades\Mail;
+
 
 
 class PlanController extends Controller
@@ -122,7 +126,7 @@ class PlanController extends Controller
                     'status'             => $request->status ?? true,
                     'projection_limit'   => $request->projection_limit ?? null,
                     'stripe_product_id'  => $stripeProductId ?? null,
-                    'stripe_price_id'    => $stripePriceId ?? null, // এই আইডিটিই পেমেন্টের সময় লাগবে
+                    'stripe_price_id'    => $stripePriceId ?? null,
                 ]
             );
 
@@ -186,15 +190,21 @@ class PlanController extends Controller
         }
     }
 
-    /**
-     * Toggle plan status (active/inactive)
-     */
     public function toggleStatus($id)
     {
         try {
             $plan = Plan::findOrFail($id);
             $plan->status = !$plan->status;
             $plan->save();
+
+            if ($plan->status == false) {
+                $users = User::where('plan_id', $id)->get();
+
+                foreach ($users as $user) {
+                    Mail::to($user->email)->send(new PlanUpdatedMail());
+                    
+                }
+            }
 
             return response()->json([
                 'success' => true,
