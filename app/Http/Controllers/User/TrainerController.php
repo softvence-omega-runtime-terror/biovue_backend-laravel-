@@ -244,28 +244,32 @@ class TrainerController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Invitation sent successfully!'
+            'message' => 'Invitation sent successfully!',
+            'token' => $token, 
         ]);
     }
-        public function acceptInvitation($token)
+    public function acceptInvitation($token)
     {
-        $invitation = Invitation::where('token', $token)
+        $invitation = \App\Models\Invitation::where('token', $token)
             ->where('status', 'pending')
             ->firstOrFail();
-        
-        \Illuminate\Support\Facades\DB::table('connect_user_proffesions')->updateOrInsert([
-            'profession_id' => $invitation->trainer_id,
-            'user_id'       => auth()->id(),
-        ], [
-            'created_at' => now(),
-            'updated_at' => now()
-        ]);
 
-        $invitation->update(['status' => 'accepted']);
+        $user = \App\Models\User::where('email', $invitation->email)->first();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'You are now connected with your trainer!'
-        ]);
+        if ($user) {
+            \Illuminate\Support\Facades\DB::table('connect_user_proffesions')->updateOrInsert([
+                'profession_id' => $invitation->trainer_id,
+                'user_id'       => $user->id,
+            ], [
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            $invitation->update(['status' => 'accepted']);
+
+            return redirect()->to('https://biovuedigitalwellness.com/user-dashboard');
+        }
+
+        return redirect()->to('https://biovuedigitalwellness.com/register?email=' . $invitation->email);
     }
 }

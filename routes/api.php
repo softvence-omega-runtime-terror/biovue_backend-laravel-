@@ -68,11 +68,11 @@ Route::prefix('v1')->group(function () {
     Route::post('firebase-login', [FirebaseAuthController::class, 'loginWithFirebase']);
 
     // Public - Everyone can view plans
-     // List all plans
-            Route::get('plans', [PlanController::class, 'index'])->name('plans.index');
+    // List all plans
+    Route::get('plans', [PlanController::class, 'index'])->name('plans.index');
 
-            // Show single plan
-            Route::get('plans/{id}', [PlanController::class, 'show'])->name('plans.show');
+    // Show single plan
+    Route::get('plans/{id}', [PlanController::class, 'show'])->name('plans.show');
 
 
     // Public Route: Get Terms & Conditions
@@ -85,14 +85,16 @@ Route::prefix('v1')->group(function () {
     Route::get('getUserProjectionData/{userId}', [ProjectionFutureGoalController::class, 'getUserProjectionData']);
 
     // Stripe Webhook
-        // Route::post('payment/webhook', [PlanPaymentController::class, 'handleWebhook']);
-        Route::post('payment/webhook', [PlanPaymentController::class, 'handleStripeWebhook']);
-        Route::post('/stripe/webhook', [PlanPaymentController::class, 'webhookHandle']);
-        Route::get('/payment/success', [PlanPaymentController::class, 'paymentSuccess'])->name('payment.success');
-        Route::get('/payment/cancel', [PlanPaymentController::class, 'paymentCancel'])->name('payment.cancel');
+    // Route::post('payment/webhook', [PlanPaymentController::class, 'handleWebhook']);
+    Route::post('payment/webhook', [PlanPaymentController::class, 'handleStripeWebhook']);
+    Route::post('/stripe/webhook', [PlanPaymentController::class, 'webhookHandle']);
+    Route::get('/payment/success', [PlanPaymentController::class, 'paymentSuccess'])->name('payment.success');
+    Route::get('/payment/cancel', [PlanPaymentController::class, 'paymentCancel'])->name('payment.cancel');
     Route::get('ads', [AdsController::class, 'index']);
     
     Route::apiResource('partners', PartnerController::class)->except(['store', 'update', 'destroy', 'show']);
+
+    Route::get('/invitation/accept/{token}', [TrainerController::class, 'acceptInvitation']);
 
     // ----------------------------
     // Protected Routes (Require Auth)
@@ -302,7 +304,6 @@ Route::prefix('v1')->group(function () {
         Route::post('/trainer-notes', [TrainerController::class, 'storeTrainerNote']);
         Route::delete('/trainer-notes/{id}', [TrainerController::class, 'destroyTrainerNote']);
         Route::post('/invitations/send', [TrainerController::class, 'sendInvitation']);
-        Route::get('/invitation/accept/{token}', [TrainerController::class, 'acceptInvitation']);
 
         Route::post('/plans/store-or-update', [PlanController::class, 'storeOrUpdatePlan']);
 

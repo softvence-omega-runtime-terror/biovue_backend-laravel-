@@ -10,11 +10,24 @@ class PlanUpdatedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct() {}
+    public $user;
+    public $planId;
+
+    public function __construct($user, $planId)
+    {
+        $this->user = $user;
+        $this->planId = $planId;
+    }
 
     public function build()
     {
+        $url = "https://biovuedigitalwellness.com/my-plan/" . $this->planId;
+
         return $this->subject('Your Plan Options Have Been Updated')
-                    ->view('emails.plan_updated');
+                    ->view('emails.plan_updated')
+                    ->with([
+                        'url' => $url,
+                        'userName' => $this->user->name
+                    ]);
     }
 }
