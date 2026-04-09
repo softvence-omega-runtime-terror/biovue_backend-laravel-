@@ -23,6 +23,7 @@ return new class extends Migration
             $table->enum('unit', ['metric', 'imperial'])->default('imperial');
             $table->string('body_fat', 20)->nullable(); 
             $table->string('location')->nullable(); 
+            $table->string('zipcode', 20)->nullable();
             $table->boolean('agreed_terms')->default(false); 
             $table->string('image')->nullable();
             $table->string('current_image')->nullable();
@@ -48,6 +49,7 @@ return new class extends Migration
             $table->string('notes')->nullable();
 
             //Trainer-specific fields
+            $table->string('prof_service_type')->nullable();
             $table->text('bio')->nullable();
             $table->json('specialties')->nullable();
             $table->json('services')->nullable(); 

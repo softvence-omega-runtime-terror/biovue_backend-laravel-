@@ -38,11 +38,12 @@ class UserProfileController extends Controller
             'height'           => 'nullable|integer',
             'weight'           => 'nullable|integer',
             'location'         => 'nullable|string|max:255',
+            'zipcode'          => 'nullable|string|max:20',
             'bio'              => 'nullable|string',
             'specialties'      => 'nullable|array',
             'services'         => 'nullable|array',
             'experience_years' => 'nullable|integer',
-
+            'prof_service_type' => 'nullable|string',
             'diabetes'            => 'nullable|boolean',
             'high_blood_pressure' => 'nullable|boolean',
             'high_cholesterol'    => 'nullable|boolean',
