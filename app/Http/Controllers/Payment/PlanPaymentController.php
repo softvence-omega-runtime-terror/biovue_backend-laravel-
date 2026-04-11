@@ -250,82 +250,78 @@ class PlanPaymentController extends Controller
     }
 
     public function processPayment(Request $request)
-{
-    $request->validate([
-        'plan_id' => 'required|exists:plans,id',
-        'billing' => 'required|in:monthly,half_annual,annual,custom',
-    ]);
-
-    $plan = Plan::findOrFail($request->plan_id);
-    $user = auth()->user();
-
-    // ✅ ১. ডাটাবেজের নতুন কলাম থেকে Price ID নেওয়া
-    $stripePriceId = ($request->billing === 'annual') 
-                     ? $plan->stripe_price_id_annual 
-                     : $plan->stripe_price_id;
-
-    // যদি আইডি না থাকে তবে ইউজারকে মেসেজ দিবে
-    if (!$stripePriceId) {
-        return response()->json([
-            'success' => false,
-            'message' => "Stripe Price ID missing in 'plans' table for this plan."
-        ], 400);
-    }
-
-    // ✅ ২. প্রাইস ক্যালকুলেশন (আপনার লজিক)
-    $finalPrice = ($request->billing === 'annual') ? ($plan->price * 12 * 0.9) : $plan->price;
-
-    try {
-        // ✅ ৩. পেমেন্ট রেকর্ড তৈরি
-        $payment = PlanPayment::create([
-            'user_id'        => $user->id,
-            'plan_id'        => $plan->id,
-            'amount'         => $finalPrice,
-            'currency'       => 'usd',
-            'billing'        => $request->billing,
-            'status'         => 'unpaid',
-            'transaction_id' => 'PENDING_' . uniqid(),
+    {
+        $request->validate([
+            'plan_id' => 'required|exists:plans,id',
+            'billing' => 'required|in:monthly,half_annual,annual,custom',
         ]);
 
-        if ($finalPrice <= 0) {
-            $payment->update(['status' => 'paid', 'paid_at' => now()]);
-            $user->update(['plan_id' => $plan->id]);
-            return response()->json(['success' => true, 'message' => 'Free plan activated.']);
+        $plan = Plan::findOrFail($request->plan_id);
+        $user = auth()->user();
+
+        $stripePriceId = ($request->billing === 'annual') 
+                        ? $plan->stripe_price_id_annual 
+                        : $plan->stripe_price_id;
+
+        if (!$stripePriceId) {
+            return response()->json([
+                'success' => false,
+                'message' => "Stripe Price ID missing in 'plans' table for this plan."
+            ], 400);
         }
 
-        // ✅ ৪. স্ট্রাইপ সেশন (Subscription Mode)
-        $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
+        $finalPrice = ($request->billing === 'annual') ? ($plan->price * 12 * 0.9) : $plan->price;
 
-        $session = $stripe->checkout->sessions->create([
-            'customer_email' => $user->email,
-            'line_items' => [[
-                'price' => $stripePriceId, // নতুন কলাম থেকে আইডি যাচ্ছে
-                'quantity' => 1,
-            ]],
-            'mode' => 'subscription',
-            'metadata' => [
-                'payment_id' => $payment->id,
-                'user_id'    => $user->id,
-            ],
-            'success_url' => 'https://biovuedigitalwellness.com/payment/show?session_id={CHECKOUT_SESSION_ID}',
-            'cancel_url'  => url('/api/v1/payment/cancel'),
-        ]);
+        try {
 
-        $payment->update(['transaction_id' => $session->id]);
+            $payment = PlanPayment::create([
+                'user_id'        => $user->id,
+                'plan_id'        => $plan->id,
+                'amount'         => $finalPrice,
+                'currency'       => 'usd',
+                'billing'        => $request->billing,
+                'status'         => 'unpaid',
+                'transaction_id' => 'PENDING_' . uniqid(),
+            ]);
 
-        return response()->json([
-            'success'      => true,
-            'checkout_url' => $session->url,
-            'payment_id'   => $payment->id,
-            'session_id'   => $session->id,
-            'amount'       => $finalPrice,
-        ]);
+            if ($finalPrice <= 0) {
+                $payment->update(['status' => 'paid', 'paid_at' => now()]);
+                $user->update(['plan_id' => $plan->id]);
+                return response()->json(['success' => true, 'message' => 'Free plan activated.']);
+            }
 
-    } catch (\Exception $e) {
-        \Log::error('Stripe Error: ' . $e->getMessage());
-        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
+
+            $session = $stripe->checkout->sessions->create([
+                'customer_email' => $user->email,
+                'line_items' => [[
+                    'price' => $stripePriceId, 
+                    'quantity' => 1,
+                ]],
+                'mode' => 'subscription',
+                'metadata' => [
+                    'payment_id' => $payment->id,
+                    'user_id'    => $user->id,
+                ],
+                'success_url' => 'https://biovuedigitalwellness.com/payment/show?session_id={CHECKOUT_SESSION_ID}',
+                'cancel_url'  => url('/api/v1/payment/cancel'),
+            ]);
+
+            $payment->update(['transaction_id' => $session->id]);
+
+            return response()->json([
+                'success'      => true,
+                'checkout_url' => $session->url,
+                'payment_id'   => $payment->id,
+                'session_id'   => $session->id,
+                'amount'       => $finalPrice,
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Stripe Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
-}
     /**
      * Payment success
      */
@@ -460,97 +456,140 @@ class PlanPaymentController extends Controller
     }
 
     public function handleStripeWebhook(Request $request)
-{
-    $payload = $request->getContent();
-    // পোস্টম্যান টেস্টের জন্য ডিকোড করা হলো (Signature check ছাড়া)
-    $event = json_decode($payload); 
+    {
+        $payload = $request->getContent();
 
-    if (!in_array($event->type, ['checkout.session.completed', 'invoice.payment_succeeded', 'invoice.payment_failed'])) {
-        return response('Event ignored', 200);
+        $event = json_decode($payload); 
+
+        if (!in_array($event->type, ['checkout.session.completed', 'invoice.payment_succeeded', 'invoice.payment_failed'])) {
+            return response('Event ignored', 200);
+        }
+
+        $session = $event->data->object;
+        $subscriptionId = $session->subscription ?? null; 
+        $paymentId = $session->metadata->payment_id ?? null;
+
+        if (!$paymentId && $subscriptionId) {
+            $lastPayment = PlanPayment::where('stripe_subscription_id', $subscriptionId)->latest()->first();
+            $paymentId = $lastPayment ? $lastPayment->id : null;
+        }
+
+        if (!$paymentId) {
+            return response('Missing Payment ID', 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            $payment = PlanPayment::with('user', 'plan')->where('id', $paymentId)->lockForUpdate()->first();
+
+            if (!$payment) {
+                DB::rollBack();
+                return response('Payment record not found', 404);
+            }
+
+            if ($event->type === 'invoice.payment_failed') {
+                $payment->update(['status' => 'failed']);
+                DB::commit();
+                return response('Failure recorded', 200);
+            }
+
+            $newEndDate = ($payment->billing === 'annual') ? now()->addYear() : now()->addMonth();
+
+            $payment->update([
+                'status' => 'paid',
+                'stripe_subscription_id' => $subscriptionId ?? $payment->stripe_subscription_id,
+                'paid_at' => now(),
+                'end_date' => $newEndDate,
+            ]);
+
+            if ($subscriptionId && $payment->user) {
+                DB::table('subscriptions')->updateOrInsert(
+                    ['stripe_id' => $subscriptionId],
+                    [
+                        'user_id' => $payment->user_id,
+                        'type' => 'default',
+                        'stripe_status' => 'active',
+                        'stripe_price' => $payment->plan->stripe_price_id ?? null,
+                        'quantity' => 1,
+                        'updated_at' => now(),
+                        'created_at' => now(),
+                    ]
+                );
+
+                $subRecord = DB::table('subscriptions')->where('stripe_id', $subscriptionId)->first();
+                DB::table('subscription_items')->updateOrInsert(
+                    ['subscription_id' => $subRecord->id],
+                    [
+                        'stripe_id' => 'si_' . \Illuminate\Support\Str::random(10),
+                        'stripe_product' => $payment->plan->stripe_product_id ?? 'prod_default',
+                        'stripe_price' => $payment->plan->stripe_price_id ?? null,
+                        'quantity' => 1,
+                        'updated_at' => now(),
+                        'created_at' => now(),
+                    ]
+                );
+            }
+
+            $payment->user->update(['plan_id' => $payment->plan_id]);
+            $credit = ProjectionCredit::firstOrNew(['user_id' => $payment->user_id]);
+            $credit->projection_limit = $payment->plan->projection_limit ?? 0;
+            $credit->save();
+
+            DB::commit();
+            return response('Webhook Success', 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Webhook Error: ' . $e->getMessage());
+            return response('Internal Error', 500);
+        }
     }
 
-    $session = $event->data->object;
-    $subscriptionId = $session->subscription ?? null; 
-    $paymentId = $session->metadata->payment_id ?? null;
+    public function cancelSubscription(Request $request)
+    {
+        $user = auth()->user();
 
-    // যদি মেটাডাটায় আইডি না থাকে (অটো-রিনিউয়ালের সময়), তবে সাবস্ক্রিপশন আইডি দিয়ে খুঁজে বের করা
-    if (!$paymentId && $subscriptionId) {
-        $lastPayment = PlanPayment::where('stripe_subscription_id', $subscriptionId)->latest()->first();
-        $paymentId = $lastPayment ? $lastPayment->id : null;
-    }
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized. Please login again.'], 401);
+        }
 
-    if (!$paymentId) {
-        return response('Missing Payment ID', 400);
-    }
+        if ($user->user_type === 'professional') {
+            $sixMonthsAgo = now()->subMonths(6);
 
-    DB::beginTransaction();
-    try {
-        $payment = PlanPayment::with('user', 'plan')->where('id', $paymentId)->lockForUpdate()->first();
+            if ($user->created_at->gt($sixMonthsAgo)) {
+                $canCancelAt = $user->created_at->addMonths(6)->format('d M, Y');
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => "As a professional user, you cannot cancel your subscription within the first 6 months. You will be eligible to cancel after {$canCancelAt}."
+                ], 403);
+            }
+        }
+
+        $payment = PlanPayment::where('user_id', $user->id)
+                    ->where('status', 'paid')
+                    ->whereNotNull('stripe_subscription_id')
+                    ->latest()
+                    ->first();
 
         if (!$payment) {
-            DB::rollBack();
-            return response('Payment record not found', 404);
+            return response()->json(['success' => false, 'message' => 'No active subscription found'], 404);
         }
 
-        // কন্ডিশন ১: পেমেন্ট ফেইল করলে
-        if ($event->type === 'invoice.payment_failed') {
-            $payment->update(['status' => 'failed']);
-            DB::commit();
-            return response('Failure recorded', 200);
+        try {
+            $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
+
+            $stripe->subscriptions->update($payment->stripe_subscription_id, [
+                'cancel_at_period_end' => true
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Your subscription will be cancelled at the end of the current billing period.'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
-
-        // কন্ডিশন ২: সফল পেমেন্ট ও সাবস্ক্রিপশন আপডেট
-        $newEndDate = ($payment->billing === 'annual') ? now()->addYear() : now()->addMonth();
-
-        $payment->update([
-            'status' => 'paid',
-            'stripe_subscription_id' => $subscriptionId ?? $payment->stripe_subscription_id,
-            'paid_at' => now(),
-            'end_date' => $newEndDate,
-        ]);
-
-        // subscriptions ও subscription_items টেবিলে ডাটা ইনসার্ট/আপডেট
-        if ($subscriptionId && $payment->user) {
-            DB::table('subscriptions')->updateOrInsert(
-                ['stripe_id' => $subscriptionId],
-                [
-                    'user_id' => $payment->user_id,
-                    'type' => 'default',
-                    'stripe_status' => 'active',
-                    'stripe_price' => $payment->plan->stripe_price_id ?? null,
-                    'quantity' => 1,
-                    'updated_at' => now(),
-                    'created_at' => now(),
-                ]
-            );
-
-            $subRecord = DB::table('subscriptions')->where('stripe_id', $subscriptionId)->first();
-            DB::table('subscription_items')->updateOrInsert(
-                ['subscription_id' => $subRecord->id],
-                [
-                    'stripe_id' => 'si_' . \Illuminate\Support\Str::random(10),
-                    'stripe_product' => $payment->plan->stripe_product_id ?? 'prod_default',
-                    'stripe_price' => $payment->plan->stripe_price_id ?? null,
-                    'quantity' => 1,
-                    'updated_at' => now(),
-                    'created_at' => now(),
-                ]
-            );
-        }
-
-        // ক্রেডিট ও ইউজার প্ল্যান আপডেট
-        $payment->user->update(['plan_id' => $payment->plan_id]);
-        $credit = ProjectionCredit::firstOrNew(['user_id' => $payment->user_id]);
-        $credit->projection_limit = $payment->plan->projection_limit ?? 0;
-        $credit->save();
-
-        DB::commit();
-        return response('Webhook Success', 200);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        \Log::error('Webhook Error: ' . $e->getMessage());
-        return response('Internal Error', 500);
     }
-}
 }

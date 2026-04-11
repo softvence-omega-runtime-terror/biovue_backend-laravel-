@@ -6,6 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use Illuminate\Http\Request;
 use Stripe\StripeClient;
+use App\Models\User;
+use App\Mail\PlanUpdatedMail;
+use Illuminate\Support\Facades\Mail;
+use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
 
 
 class PlanController extends Controller
@@ -122,7 +128,7 @@ class PlanController extends Controller
                     'status'             => $request->status ?? true,
                     'projection_limit'   => $request->projection_limit ?? null,
                     'stripe_product_id'  => $stripeProductId ?? null,
-                    'stripe_price_id'    => $stripePriceId ?? null, // এই আইডিটিই পেমেন্টের সময় লাগবে
+                    'stripe_price_id'    => $stripePriceId ?? null,
                 ]
             );
 
@@ -151,7 +157,7 @@ class PlanController extends Controller
         try {
             $plan = Plan::findOrFail($id);
 
-            $billing = strtolower($request->query('billing', 'monthly')); // monthly/annual default
+            $billing = strtolower($request->query('billing', 'monthly'));
             if (!in_array($billing, ['monthly', 'annual'])) {
                 $billing = 'monthly';
             }
@@ -164,7 +170,7 @@ class PlanController extends Controller
                 'duration'      => $plan->duration,
                 'member_limit'  => $plan->member_limit,
                 'features'      => $plan->features,
-                'status'        => $plan->status,
+                'status'        => (bool) $plan->status,
                 'price'         => $billing === 'annual' ? $plan->annual_price : $plan->price,
             ];
 
@@ -173,12 +179,12 @@ class PlanController extends Controller
                 'data'    => $data
             ], 200);
 
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Plan not found'
             ], 404);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch plan: ' . $e->getMessage()
@@ -186,9 +192,6 @@ class PlanController extends Controller
         }
     }
 
-    /**
-     * Toggle plan status (active/inactive)
-     */
     public function toggleStatus($id)
     {
         try {
@@ -196,22 +199,30 @@ class PlanController extends Controller
             $plan->status = !$plan->status;
             $plan->save();
 
+            if ($plan->status == false) {
+                $users = User::where('plan_id', $id)->get();
+
+                foreach ($users as $user) {
+                    Mail::to($user->email)->send(new PlanUpdatedMail($user, $id));
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Plan status updated successfully',
                 'data' => [
-                    'id' => $plan->id,
-                    'name' => $plan->name,
+                    'id'     => $plan->id,
+                    'name'   => $plan->name,
                     'status' => $plan->status ? 'Active' : 'Inactive'
                 ]
             ], 200);
 
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Plan not found'
             ], 404);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update plan status: ' . $e->getMessage()
