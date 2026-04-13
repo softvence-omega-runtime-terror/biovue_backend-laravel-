@@ -33,7 +33,7 @@ class MessageController extends Controller
 
         broadcast(new MessageSent($msg->load('sender')))->toOthers();
 
-//        return $receiver->notificationSettings;
+        //        return $receiver->notificationSettings;
 
         $notificationSettings = UserNotificationSetting::where('user_id',$request->receiver_id)->first();
 
