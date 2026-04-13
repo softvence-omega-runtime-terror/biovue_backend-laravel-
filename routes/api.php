@@ -89,7 +89,7 @@ Route::prefix('v1')->group(function () {
     Route::post('payment/webhook', [PlanPaymentController::class, 'handleStripeWebhook']);
     Route::post('/stripe/webhook', [PlanPaymentController::class, 'webhookHandle']);
     Route::get('/payment/success', [PlanPaymentController::class, 'paymentSuccess'])->name('payment.success');
-    Route::post('/payment/cancel', [PlanPaymentController::class, 'cancelSubscription']);
+    
     Route::get('ads', [AdsController::class, 'index']);
     
     Route::apiResource('partners', PartnerController::class)->except(['store', 'update', 'destroy', 'show']);
@@ -102,7 +102,7 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('save-terms', [PrivacyPolicyController::class, 'save']);
-
+        Route::post('/payment/cancel', [PlanPaymentController::class, 'cancelSubscription']);
         //AI INsight part
         Route::post('/change-password', [ForgotPasswordController::class, 'changePassword']);
 
