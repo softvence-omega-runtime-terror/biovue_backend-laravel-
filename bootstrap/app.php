@@ -14,21 +14,19 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        
         $middleware->statefulApi(); 
+
         $middleware->trustProxies(at: '*');
 
         $middleware->validateCsrfTokens(except: [
             'api/v1/*', 
-        ]);
-        $middleware->alias([
-            'data.access' => CheckDataAccess::class,
-        ]);
-         $middleware->validateCsrfTokens(except: [
-            '/stripe/webhook', 
+            'api/v1/payment/webhook',
+            'stripe/webhook',
         ]);
 
-        $middleware->validateCsrfTokens(except: [
-            'api/v1/payment/webhook',
+        $middleware->alias([
+            'data.access' => CheckDataAccess::class,
         ]);
 
     })

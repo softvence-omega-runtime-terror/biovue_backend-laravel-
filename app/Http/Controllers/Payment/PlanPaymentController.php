@@ -462,35 +462,32 @@ class PlanPaymentController extends Controller
         $endpointSecret = config('services.stripe.webhook_secret');
 
         try {
-            $event = \Stripe\Webhook::constructEvent(
-                $payload, $sigHeader, $endpointSecret
-            );
-        } catch (\UnexpectedValueException $e) {
-            return response('Invalid payload', 400);
-        } catch (\Stripe\Exception\SignatureVerificationException $e) {
+            $event = \Stripe\Webhook::constructEvent($payload, $sigHeader, $endpointSecret);
+        } catch (\Exception $e) {
+            Log::error('Stripe Webhook Signature Error: ' . $e->getMessage());
             return response('Invalid signature', 400);
         }
 
         $session = $event->data->object;
         $subscriptionId = $session->subscription ?? null;
 
+        Log::info('Stripe Event Received: ' . $event->type, ['sub_id' => $subscriptionId]);
+
         if ($event->type === 'checkout.session.completed' || $event->type === 'invoice.payment_succeeded') {
             
             $paymentId = $session->metadata->payment_id ?? null;
 
             if (!$paymentId && $subscriptionId) {
-                $lastPayment = PlanPayment::where('stripe_subscription_id', $subscriptionId)
-                                ->latest()
-                                ->first();
+                $lastPayment = PlanPayment::where('stripe_subscription_id', $subscriptionId)->latest()->first();
                 $paymentId = $lastPayment ? $lastPayment->id : null;
             }
 
             if ($paymentId) {
                 DB::beginTransaction();
                 try {
-                    $payment = PlanPayment::with('user', 'plan')->find($paymentId);
+                    $payment = PlanPayment::find($paymentId);
 
-                    if ($payment && $payment->status !== 'paid') {
+                    if ($payment) {
                         $payment->update([
                             'status' => 'paid',
                             'stripe_subscription_id' => $subscriptionId,
@@ -500,11 +497,11 @@ class PlanPaymentController extends Controller
 
                         if ($payment->user) {
                             $payment->user->update(['plan_id' => $payment->plan_id]);
-                            
                             $credit = ProjectionCredit::firstOrNew(['user_id' => $payment->user_id]);
                             $credit->projection_limit = $payment->plan->projection_limit ?? 0;
                             $credit->save();
                         }
+                        Log::info('Payment Updated in DB: ' . $paymentId);
                     }
                     DB::commit();
                 } catch (\Exception $e) {
@@ -512,11 +509,9 @@ class PlanPaymentController extends Controller
                     Log::error('Webhook DB Error: ' . $e->getMessage());
                     return response('Database Error', 500);
                 }
+            } else {
+                Log::warning('Payment ID not found in metadata for session: ' . $session->id);
             }
-        }
-
-        if ($event->type === 'customer.subscription.deleted' || $event->type === 'invoice.payment_failed') {
-            PlanPayment::where('stripe_subscription_id', $subscriptionId)->update(['status' => 'expired']);
         }
 
         return response('Webhook Handled Successfully', 200);
