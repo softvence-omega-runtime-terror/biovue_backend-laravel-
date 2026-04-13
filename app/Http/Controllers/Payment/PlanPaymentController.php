@@ -458,92 +458,159 @@ class PlanPaymentController extends Controller
     public function handleStripeWebhook(Request $request)
     {
         $payload = $request->getContent();
+        $sigHeader = $request->header('Stripe-Signature');
+        $endpointSecret = config('services.stripe.webhook_secret');
 
-        $event = json_decode($payload); 
-
-        if (!in_array($event->type, ['checkout.session.completed', 'invoice.payment_succeeded', 'invoice.payment_failed'])) {
-            return response('Event ignored', 200);
+        try {
+            $event = \Stripe\Webhook::constructEvent(
+                $payload, $sigHeader, $endpointSecret
+            );
+        } catch (\UnexpectedValueException $e) {
+            return response('Invalid payload', 400);
+        } catch (\Stripe\Exception\SignatureVerificationException $e) {
+            return response('Invalid signature', 400);
         }
 
         $session = $event->data->object;
-        $subscriptionId = $session->subscription ?? null; 
-        $paymentId = $session->metadata->payment_id ?? null;
+        $subscriptionId = $session->subscription ?? null;
 
-        if (!$paymentId && $subscriptionId) {
-            $lastPayment = PlanPayment::where('stripe_subscription_id', $subscriptionId)->latest()->first();
-            $paymentId = $lastPayment ? $lastPayment->id : null;
-        }
+        if ($event->type === 'checkout.session.completed' || $event->type === 'invoice.payment_succeeded') {
+            
+            $paymentId = $session->metadata->payment_id ?? null;
 
-        if (!$paymentId) {
-            return response('Missing Payment ID', 400);
-        }
-
-        DB::beginTransaction();
-        try {
-            $payment = PlanPayment::with('user', 'plan')->where('id', $paymentId)->lockForUpdate()->first();
-
-            if (!$payment) {
-                DB::rollBack();
-                return response('Payment record not found', 404);
+            if (!$paymentId && $subscriptionId) {
+                $lastPayment = PlanPayment::where('stripe_subscription_id', $subscriptionId)
+                                ->latest()
+                                ->first();
+                $paymentId = $lastPayment ? $lastPayment->id : null;
             }
 
-            if ($event->type === 'invoice.payment_failed') {
-                $payment->update(['status' => 'failed']);
-                DB::commit();
-                return response('Failure recorded', 200);
+            if ($paymentId) {
+                DB::beginTransaction();
+                try {
+                    $payment = PlanPayment::with('user', 'plan')->find($paymentId);
+
+                    if ($payment && $payment->status !== 'paid') {
+                        $payment->update([
+                            'status' => 'paid',
+                            'stripe_subscription_id' => $subscriptionId,
+                            'paid_at' => now(),
+                            'end_date' => ($payment->billing === 'annual') ? now()->addYear() : now()->addMonth(),
+                        ]);
+
+                        if ($payment->user) {
+                            $payment->user->update(['plan_id' => $payment->plan_id]);
+                            
+                            $credit = ProjectionCredit::firstOrNew(['user_id' => $payment->user_id]);
+                            $credit->projection_limit = $payment->plan->projection_limit ?? 0;
+                            $credit->save();
+                        }
+                    }
+                    DB::commit();
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    Log::error('Webhook DB Error: ' . $e->getMessage());
+                    return response('Database Error', 500);
+                }
             }
-
-            $newEndDate = ($payment->billing === 'annual') ? now()->addYear() : now()->addMonth();
-
-            $payment->update([
-                'status' => 'paid',
-                'stripe_subscription_id' => $subscriptionId ?? $payment->stripe_subscription_id,
-                'paid_at' => now(),
-                'end_date' => $newEndDate,
-            ]);
-
-            if ($subscriptionId && $payment->user) {
-                DB::table('subscriptions')->updateOrInsert(
-                    ['stripe_id' => $subscriptionId],
-                    [
-                        'user_id' => $payment->user_id,
-                        'type' => 'default',
-                        'stripe_status' => 'active',
-                        'stripe_price' => $payment->plan->stripe_price_id ?? null,
-                        'quantity' => 1,
-                        'updated_at' => now(),
-                        'created_at' => now(),
-                    ]
-                );
-
-                $subRecord = DB::table('subscriptions')->where('stripe_id', $subscriptionId)->first();
-                DB::table('subscription_items')->updateOrInsert(
-                    ['subscription_id' => $subRecord->id],
-                    [
-                        'stripe_id' => 'si_' . \Illuminate\Support\Str::random(10),
-                        'stripe_product' => $payment->plan->stripe_product_id ?? 'prod_default',
-                        'stripe_price' => $payment->plan->stripe_price_id ?? null,
-                        'quantity' => 1,
-                        'updated_at' => now(),
-                        'created_at' => now(),
-                    ]
-                );
-            }
-
-            $payment->user->update(['plan_id' => $payment->plan_id]);
-            $credit = ProjectionCredit::firstOrNew(['user_id' => $payment->user_id]);
-            $credit->projection_limit = $payment->plan->projection_limit ?? 0;
-            $credit->save();
-
-            DB::commit();
-            return response('Webhook Success', 200);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Webhook Error: ' . $e->getMessage());
-            return response('Internal Error', 500);
         }
+
+        if ($event->type === 'customer.subscription.deleted' || $event->type === 'invoice.payment_failed') {
+            PlanPayment::where('stripe_subscription_id', $subscriptionId)->update(['status' => 'expired']);
+        }
+
+        return response('Webhook Handled Successfully', 200);
     }
+
+    // public function handleStripeWebhook(Request $request)
+    // {
+    //     $payload = $request->getContent();
+
+    //     $event = json_decode($payload); 
+
+    //     if (!in_array($event->type, ['checkout.session.completed', 'invoice.payment_succeeded', 'invoice.payment_failed'])) {
+    //         return response('Event ignored', 200);
+    //     }
+
+    //     $session = $event->data->object;
+    //     $subscriptionId = $session->subscription ?? null; 
+    //     $paymentId = $session->metadata->payment_id ?? null;
+
+    //     if (!$paymentId && $subscriptionId) {
+    //         $lastPayment = PlanPayment::where('stripe_subscription_id', $subscriptionId)->latest()->first();
+    //         $paymentId = $lastPayment ? $lastPayment->id : null;
+    //     }
+
+    //     if (!$paymentId) {
+    //         return response('Missing Payment ID', 400);
+    //     }
+
+    //     DB::beginTransaction();
+    //     try {
+    //         $payment = PlanPayment::with('user', 'plan')->where('id', $paymentId)->lockForUpdate()->first();
+
+    //         if (!$payment) {
+    //             DB::rollBack();
+    //             return response('Payment record not found', 404);
+    //         }
+
+    //         if ($event->type === 'invoice.payment_failed') {
+    //             $payment->update(['status' => 'failed']);
+    //             DB::commit();
+    //             return response('Failure recorded', 200);
+    //         }
+
+    //         $newEndDate = ($payment->billing === 'annual') ? now()->addYear() : now()->addMonth();
+
+    //         $payment->update([
+    //             'status' => 'paid',
+    //             'stripe_subscription_id' => $subscriptionId ?? $payment->stripe_subscription_id,
+    //             'paid_at' => now(),
+    //             'end_date' => $newEndDate,
+    //         ]);
+
+    //         if ($subscriptionId && $payment->user) {
+    //             DB::table('subscriptions')->updateOrInsert(
+    //                 ['stripe_id' => $subscriptionId],
+    //                 [
+    //                     'user_id' => $payment->user_id,
+    //                     'type' => 'default',
+    //                     'stripe_status' => 'active',
+    //                     'stripe_price' => $payment->plan->stripe_price_id ?? null,
+    //                     'quantity' => 1,
+    //                     'updated_at' => now(),
+    //                     'created_at' => now(),
+    //                 ]
+    //             );
+
+    //             $subRecord = DB::table('subscriptions')->where('stripe_id', $subscriptionId)->first();
+    //             DB::table('subscription_items')->updateOrInsert(
+    //                 ['subscription_id' => $subRecord->id],
+    //                 [
+    //                     'stripe_id' => 'si_' . \Illuminate\Support\Str::random(10),
+    //                     'stripe_product' => $payment->plan->stripe_product_id ?? 'prod_default',
+    //                     'stripe_price' => $payment->plan->stripe_price_id ?? null,
+    //                     'quantity' => 1,
+    //                     'updated_at' => now(),
+    //                     'created_at' => now(),
+    //                 ]
+    //             );
+    //         }
+
+    //         $payment->user->update(['plan_id' => $payment->plan_id]);
+    //         $credit = ProjectionCredit::firstOrNew(['user_id' => $payment->user_id]);
+    //         $credit->projection_limit = $payment->plan->projection_limit ?? 0;
+    //         $credit->save();
+
+    //         DB::commit();
+    //         return response('Webhook Success', 200);
+
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         \Log::error('Webhook Error: ' . $e->getMessage());
+    //         return response('Internal Error', 500);
+    //     }
+    // }
 
     public function cancelSubscription(Request $request)
     {
