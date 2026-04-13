@@ -176,7 +176,7 @@ class PlanPaymentController extends Controller
     /**
      * Process Subscription Payment
      */
-    public function processPayment(Request $request)
+    public function paymentProcess(Request $request)
     {
         $request->validate([
             'plan_id' => 'required|exists:plans,id',
