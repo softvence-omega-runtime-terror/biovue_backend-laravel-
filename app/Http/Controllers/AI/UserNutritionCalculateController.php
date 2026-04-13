@@ -30,13 +30,13 @@ class UserNutritionCalculateController extends Controller
                 ->timeout(120)
                 ->post('https://ai.biovuedigitalwellness.com/api/v1/habits/nutritions/calculate', [
                     'foods' => $foods,
-                    'user_id' => $userId,
+                    'user_id' => (string) $userId,
                 ]);
 
             if ($response->failed()) {
                 return response()->json([
                     'message' => 'Nutrition API failed',
-                    'error' => $response->body()
+                    'error' => $response->json()
                 ], 500);
             }
 
