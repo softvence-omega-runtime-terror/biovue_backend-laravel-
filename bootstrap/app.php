@@ -13,12 +13,13 @@ return Application::configure(basePath: dirname(__DIR__))
         channels: __DIR__.'/../routes/channels.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware): void {
+    ->withMiddleware(function (Middleware $middleware) {
         
         $middleware->statefulApi(); 
 
         $middleware->trustProxies(at: '*');
 
+        // Shob webhook ebong API route ekbare exclude kora holo
         $middleware->validateCsrfTokens(except: [
             'api/v1/*', 
             'api/v1/payment/webhook',
