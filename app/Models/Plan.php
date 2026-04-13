@@ -38,11 +38,16 @@ class Plan extends Model
     */
 
     // Plan creator (admin / owner)
-    public function user()
+    public function users()
     {
-        return $this->belongsTo(User::class);
+        return $this->hasMany(User::class, 'plan_id');
     }
 
+    public function payments()
+    {
+        return $this->hasMany(PlanPayment::class, 'plan_id');
+    }
+    
     // Future subscription relation
     public function subscriptions()
     {

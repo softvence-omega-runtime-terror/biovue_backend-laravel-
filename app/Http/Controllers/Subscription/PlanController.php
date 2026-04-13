@@ -235,18 +235,37 @@ class PlanController extends Controller
      */
     public function destroy($id)
     {
-        $plan = Plan::find($id);
-        if (!$plan) return response()->json(['success' => false, 'message' => 'Plan not found'], 404);
+        // Fetch the plan with counts of related users and payments
+        $plan = Plan::withCount(['users', 'payments'])->find($id);
 
-        // Prevent deleting fixed plans
-        if (in_array($plan->id, [1,2,3,4,5,6,7,8])) {
+        if (!$plan) {
             return response()->json([
                 'success' => false,
-                'message' => 'This plan is fixed and cannot be deleted.'
-            ], 403);
+                'message' => 'Plan not found'
+            ], 404);
+        }
+
+        // Check if any user is currently assigned to this plan
+        if ($plan->users_count > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete: This plan is currently being used by active users.'
+            ], 422);
+        }
+
+        // Check if there is any payment history linked to this plan
+        if ($plan->payments_count > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete: This plan has existing payment records (Audit Trail).'
+            ], 422);
         }
 
         $plan->delete();
-        return response()->json(['success' => true, 'message' => 'Plan deleted successfully'], 200);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Plan deleted successfully'
+        ], 200);
     }
 }

@@ -264,4 +264,16 @@ class PlanPaymentController extends Controller
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
+
+    public function getCustomerPortal(Request $request) {
+        $user = auth()->user();
+        $stripe = new StripeClient(config('services.stripe.secret'));
+
+        $session = $stripe->billingPortal->sessions->create([
+            'customer' => $user->stripe_id, // User model-e stripe_id thakte hobe
+            'return_url' => url('/user-dashboard'),
+        ]);
+
+        return response()->json(['url' => $session->url]);
+    }
 }
