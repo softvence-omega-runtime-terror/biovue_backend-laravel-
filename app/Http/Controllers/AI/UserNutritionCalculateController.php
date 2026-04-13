@@ -29,7 +29,8 @@ class UserNutritionCalculateController extends Controller
             $response = Http::withoutVerifying()
                 ->timeout(120)
                 ->post('https://ai.biovuedigitalwellness.com/api/v1/habits/nutritions/calculate', [
-                    'foods' => $foods
+                    'foods' => $foods,
+                    'user_id' => $userId,
                 ]);
 
             if ($response->failed()) {
