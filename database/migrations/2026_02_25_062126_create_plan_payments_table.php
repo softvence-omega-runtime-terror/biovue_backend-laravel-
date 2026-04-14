@@ -31,7 +31,7 @@ class CreatePlanPaymentsTable extends Migration
            
 
             // payment status
-            $table->enum('status', ['unpaid', 'paid', 'failed', 'refunded'])
+            $table->enum('status', ['unpaid', 'paid', 'failed', 'refunded', 'cancelled'])
                   ->default('unpaid');
 
           
