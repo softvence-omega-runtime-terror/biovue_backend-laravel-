@@ -234,17 +234,18 @@ class PlanPaymentController extends Controller
     {
         $user = auth()->user();
 
-        // Professional block (6 months)
+        // 1. Professional User Restriction (6-Month Lock)
         if ($user->user_type === 'professional') {
             $minDate = $user->created_at->addMonths(6);
             if (now()->lt($minDate)) {
                 return response()->json([
                     'success' => false,
-                    'message' => "Professional users can cancel after " . $minDate->format('d M, Y')
+                    'message' => "Professional users can only cancel after " . $minDate->format('d M, Y')
                 ], 403);
             }
         }
 
+        // 2. Find the active payment record
         $payment = PlanPayment::where('user_id', $user->id)
             ->where('status', 'paid')
             ->whereNotNull('stripe_subscription_id')
@@ -252,16 +253,35 @@ class PlanPaymentController extends Controller
             ->first();
 
         if (!$payment) {
-            return response()->json(['success' => false, 'message' => 'No active subscription found.'], 404);
+            return response()->json([
+                'success' => false, 
+                'message' => 'No active subscription found.'
+            ], 404);
         }
 
         try {
-            $stripe = new StripeClient(config('services.stripe.secret'));
-            $stripe->subscriptions->update($payment->stripe_subscription_id, ['cancel_at_period_end' => true]);
+            $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
 
-            return response()->json(['success' => true, 'message' => 'Cancellation scheduled for end of period.']);
+            /** * IMMEDIATE CANCELLATION
+             * By calling cancel(), the subscription ends immediately.
+             * Stripe will not automatically refund the remaining days.
+             */
+            $stripe->subscriptions->cancel($payment->stripe_subscription_id);
+
+            // Optional: Update your local database status immediately
+            $payment->update(['status' => 'cancelled']); 
+            $user->update(['plan_id' => null]); // Remove plan access
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Your subscription has been cancelled immediately. No refunds will be issued for the remaining period.'
+            ]);
+
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false, 
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
