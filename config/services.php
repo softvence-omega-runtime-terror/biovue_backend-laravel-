@@ -37,9 +37,14 @@ return [
 
 
     'stripe' => [
-    'key' => env('STRIPE_KEY'),              // Publishable key
-    'secret' => env('STRIPE_SECRET'),        // Secret key
-    'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'), // Webhook signing secret
-],
+        'key' => env('STRIPE_KEY'),              // Publishable key
+        'secret' => env('STRIPE_SECRET'),        // Secret key
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'), // Webhook signing secret
+
+    ],
+
+    'recaptcha' => [
+        'secret' => env('RECAPTCHA_SECRET'),
+    ],
 
 ];

@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Invitation;
 use App\Mail\InvitationMail;
+use App\Models\ProjectionCredit;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 
@@ -271,5 +272,51 @@ class TrainerController extends Controller
         }
 
         return redirect()->to('https://biovuedigitalwellness.com/register?email=' . $invitation->email);
+    }
+
+    public function giftCredit(Request $request)
+    {
+        $request->validate([
+            'receiver_id' => 'required|exists:users,id',
+            'amount' => 'required|integer|min:1',
+        ]);
+
+        $trainer = auth()->user();
+        $amount = $request->amount;
+
+        try {
+            return DB::transaction(function () use ($trainer, $request, $amount) {
+                
+                $trainerCredit = ProjectionCredit::where('user_id', $trainer->id)->lockForUpdate()->first();
+
+                if (!$trainerCredit || $trainerCredit->projection_limit < $amount) {
+                    return response()->json([
+                        'success' => false, 
+                        'message' => 'Insufficient projection credits.'
+                    ], 400);
+                }
+
+                $receiverCredit = ProjectionCredit::firstOrCreate(
+                    ['user_id' => $request->receiver_id],
+                    ['projection_limit' => 0]
+                );
+
+                $trainerCredit->decrement('projection_limit', $amount);
+                $receiverCredit->increment('projection_limit', $amount);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Successfully gifted $amount credit(s).",
+                    'remaining_credit' => $trainerCredit->fresh()->projection_limit
+                ]);
+            });
+
+        } catch (\Exception $e) {
+            \Log::error("Credit Gift Error: " . $e->getMessage());
+            return response()->json([
+                'success' => false, 
+                'message' => 'Something went wrong during the transfer.'
+            ], 500);
+        }
     }
 }

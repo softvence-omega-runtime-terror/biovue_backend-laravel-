@@ -288,7 +288,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/my-projections', [ProjectionController::class, 'index']);
         Route::get('/user/notification', [NotificationController::class, 'getSettings']);
         Route::post('/user/notification-settings', [NotificationController::class, 'updateSettings']);
-
+        Route::post('/gift-credit', [TrainerController::class, 'giftCredit']);
         
         Route::post('/products/bulk-upload', [ProductController::class, 'bulkUpload']);
         Route::get('/products/template', [ProductController::class, 'downloadTemplate']);
