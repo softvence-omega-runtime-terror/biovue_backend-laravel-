@@ -44,7 +44,7 @@ return [
     ],
 
     'recaptcha' => [
-        'secret' => env('RECAPTCHA_SECRET'),
+        'secret' => env('NOCAPTCHA_SECRET'),
     ],
 
 ];
