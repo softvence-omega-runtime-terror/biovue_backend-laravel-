@@ -11,13 +11,12 @@ use App\Notifications\ClientMessageNotification;
 use App\Notifications\CoachMessageNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class MessageController extends Controller
 {
     public function sendMessage(Request $request)
     {
-
-
         $request->validate([
             'receiver_id' => 'required|exists:users,id',
             'message' => 'required|string'
@@ -29,28 +28,33 @@ class MessageController extends Controller
             'message' => $request->message,
         ]);
 
-        $receiver = User::find($request->receiver_id);
+        if (!$msg) {
+            return response()->json(['success' => false, 'message' => 'Failed to save message'], 500);
+        }
 
         broadcast(new MessageSent($msg->load('sender')))->toOthers();
 
-        //        return $receiver->notificationSettings;
+        $receiver = User::find($request->receiver_id);
+        $settings = UserNotificationSetting::where('user_id', $receiver->id)->first();
 
-        $notificationSettings = UserNotificationSetting::where('user_id',$request->receiver_id)->first();
+        Log::info('Notification Debug:', [
+            'receiver_id' => $receiver->id,
+            'user_type' => $receiver->user_type,
+            'coach_enabled' => $settings->coach_messages ?? 'Not Set (Default 0)',
+            'client_enabled' => $settings->client_messages ?? 'Not Set (Default 0)'
+        ]);
 
-        if($receiver->user_type == 'individual' && $notificationSettings && $notificationSettings->coach_messages == 1)
-        {
-            $receiver->notify(new CoachMessageNotification('new Coach Message',$request->message,'coach_message'));
-        }
-        else
-        {
-            if ($notificationSettings && $notificationSettings->client_messages == 1)
-            {
-                $receiver->notify(new ClientMessageNotification('new Client Message',$request->message,'client_message'));
+        try {
+            if ($receiver->user_type === 'individual' && ($settings->coach_messages ?? 0) == 1) {
+                $receiver->notify(new CoachMessageNotification('New Coach Message', $request->message, 'coach_message'));
+                Log::info("Coach notification sent to User ID: {$receiver->id}");
+            } 
+            elseif (($settings->client_messages ?? 0) == 1) {
+                $receiver->notify(new ClientMessageNotification('New Client Message', $request->message, 'client_message'));
+                Log::info("Client notification sent to User ID: {$receiver->id}");
             }
-            else
-            {
-
-            }
+        } catch (\Exception $e) {
+            Log::error("Notification process failed for User ID: {$receiver->id}. Error: " . $e->getMessage());
         }
 
         return response()->json([

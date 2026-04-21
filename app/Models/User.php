@@ -208,4 +208,9 @@ class User extends Authenticatable
         'user_type' => 'string',
         'status' => 'string',
     ];
+
+    public function devices()
+    {
+        return $this->hasMany(UserDevice::class, 'user_id', 'id');
+    }
 }
