@@ -43,6 +43,7 @@ use App\Http\Controllers\AI\ProjectionFutureGoalController;
 use App\Http\Controllers\AI\RecommendationController;
 use App\Http\Controllers\AI\UserHabitUpdateController;
 use App\Http\Controllers\AI\UserNutritionCalculateController;
+use App\Http\Controllers\Notification\DeviceController;
 use App\Http\Controllers\Partner\PartnerController;
 use App\Http\Controllers\PrivacyPolicy\PrivacyPolicyController;
 
@@ -101,6 +102,7 @@ Route::prefix('v1')->group(function () {
     // ----------------------------
     Route::middleware('auth:sanctum')->group(function () {
 
+        Route::post('/update-fcm-token', [DeviceController::class, 'updateToken']);
         Route::post('save-terms', [PrivacyPolicyController::class, 'save']);
         Route::post('/payment/cancel', [PlanPaymentController::class, 'cancelSubscription']);
         //AI INsight part

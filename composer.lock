@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0ec8f87e78abab240446ae1ab3910a0f",
+    "content-hash": "87385066a2809575b4b058e330e74fb2",
     "packages": [
         {
             "name": "beste/clock",
@@ -2326,16 +2326,16 @@
         },
         {
             "name": "kreait/firebase-php",
-            "version": "7.24.0",
+            "version": "7.24.1",
             "source": {
                 "type": "git",
-                "url": "https://github.com/kreait/firebase-php.git",
-                "reference": "7e2c321265dcb2eeea6fdb72e3819db684e0d4be"
+                "url": "https://github.com/beste/firebase-php.git",
+                "reference": "935292e2af33af0120654ce704f1dc8f1c03025b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kreait/firebase-php/zipball/7e2c321265dcb2eeea6fdb72e3819db684e0d4be",
-                "reference": "7e2c321265dcb2eeea6fdb72e3819db684e0d4be",
+                "url": "https://api.github.com/repos/beste/firebase-php/zipball/935292e2af33af0120654ce704f1dc8f1c03025b",
+                "reference": "935292e2af33af0120654ce704f1dc8f1c03025b",
                 "shasum": ""
             },
             "require": {
@@ -2348,7 +2348,7 @@
                 "ext-json": "*",
                 "ext-mbstring": "*",
                 "fig/http-message-util": "^1.1.5",
-                "firebase/php-jwt": "^6.10.2",
+                "firebase/php-jwt": "^6.10.2 || ^7.0.2",
                 "google/auth": "^1.45",
                 "google/cloud-storage": "^1.48.7",
                 "guzzlehttp/guzzle": "^7.9.2",
@@ -2423,7 +2423,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2025-11-27T22:03:59+00:00"
+            "time": "2026-02-18T23:43:18+00:00"
         },
         {
             "name": "kreait/firebase-tokens",
