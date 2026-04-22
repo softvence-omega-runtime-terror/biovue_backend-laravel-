@@ -45,11 +45,11 @@ RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Expose port 8000 for Laravel's built-in server
-EXPOSE 8000
+# Expose ports: 8000 for Laravel serve, 8080 for Reverb
+EXPOSE 8000 8080
 
 # Set the entrypoint script
 ENTRYPOINT ["docker-entrypoint.sh"]
 
 # Default command to run the application
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+CMD ["sh", "-c", "php artisan reverb:start --host=0.0.0.0 --port=8080 & php artisan serve --host=0.0.0.0 --port=8000"]

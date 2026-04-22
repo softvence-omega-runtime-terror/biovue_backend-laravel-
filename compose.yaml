@@ -31,6 +31,7 @@ services:
     working_dir: /var/www/html
     ports:
       - "8000:8000" # Exposes the application on port 8000
+      - "8080:8080" # Exposes Reverb websocket on port 8080
     env_file:
       - .env.docker
     volumes:
