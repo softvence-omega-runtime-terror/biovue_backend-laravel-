@@ -34,7 +34,7 @@ class UserProfileController extends Controller
             'unit'             => 'nullable|string|in:metric,imperial',
             'age'              => 'nullable|integer',
             'sex'              => 'nullable|string|max:20',
-            'image'            => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+            'image'            => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
             'height'           => 'nullable',
             'weight'           => 'nullable',
             'location'         => 'nullable|string|max:255',
